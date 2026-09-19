@@ -1,2 +1,3 @@
-Shift Pay HQ v9.7.2 DEV — Rota MVP Polish
-UI cleanup only. Pay engine and 9-week rota logic unchanged.
+Shift Pay HQ v9.8 DEV
+Pay Check Foundation
+Rota/pay engine unchanged; adds manual payslip entry, August evidence test, traffic-light checks, payroll timeline and audit trail.
