@@ -1,2 +1,1 @@
-Shift Pay HQ v9.4 COMMERCIAL ROTA UI DEV
-Pay engine unchanged from v9.3.
+Shift Pay HQ v9.5 DEV — Tap-to-manage calendar date actions
