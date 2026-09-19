@@ -1,2 +1,3 @@
-Shift Pay HQ v9.6 DEV
-Tap any calendar date to manage roster overrides, overtime and custom shifts. Pay formulas remain unchanged.
+SHIFT PAY HQ v9.7 DEV — Native iPhone Polish
+
+Test build. Pay engine unchanged from prior development build.
