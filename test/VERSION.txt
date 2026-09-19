@@ -1,3 +1,2 @@
-Shift Pay HQ v9.8.1 DEV
-Pay Check result summary polish.
-No changes to the pay engine or 9-week rota logic.
+Shift Pay HQ v9.8.2 DEV
+ECF bridge and evidence UI; pay engine unchanged.
