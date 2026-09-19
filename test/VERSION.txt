@@ -1,2 +1,2 @@
-Shift Pay HQ v9.8.3 DEV
-Rota → ECF conversion and shift confirmation foundation.
+Shift Pay HQ v9.8.4 DEV
+Smart Payroll Calendar — SAS 2026/27 automatic cut-offs, processing dates, eExpenses and paydays.
