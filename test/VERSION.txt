@@ -1,1 +1,2 @@
-Shift Pay HQ v9.7 DEV — Native iPhone Polish
+Shift Pay HQ v9.7.1 DEV — Native UI Polish
+Visual-only refinement. Pay and rota logic unchanged.
