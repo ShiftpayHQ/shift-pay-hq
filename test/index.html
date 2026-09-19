@@ -1,2 +1,247 @@
-HTML
-Test
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#101828">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shift Pay HQ">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Shift Pay HQ v9.4 Commercial Rota Dev</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f2f4f7;color:#101828;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{background:#101828;color:#fff;padding:22px 18px}header h1{margin:0;font-size:27px}header p{margin:4px 0 0;color:#d0d5dd}main{max-width:1050px;margin:auto;padding:16px 16px 115px}.card{background:#fff;border-radius:18px;padding:18px;margin-bottom:15px;box-shadow:0 2px 10px #10182810}h2{font-size:19px;margin:0 0 14px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}@media(min-width:780px){.grid.four{grid-template-columns:repeat(4,1fr)}}label{font-size:12px;font-weight:700;color:#475467}input,select{width:100%;margin-top:5px;border:1px solid #d0d5dd;border-radius:11px;padding:11px;font-size:16px;background:#fff}button{border:0;border-radius:11px;padding:10px 12px;background:#101828;color:#fff;font-weight:700;cursor:pointer}.wide{width:100%;margin-top:12px}.soft{background:#eef2f6;color:#101828}.danger{background:#fee4e2;color:#b42318}.muted{font-size:13px;color:#667085}.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#f8fafc;border-radius:13px;padding:13px}.stat small{color:#667085}.stat strong{display:block;font-size:20px;margin-top:3px}.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eaecf0}.total{font-size:32px;font-weight:800}.shift{padding:13px 0;border-bottom:1px solid #eaecf0}.badge{display:inline-block;border-radius:20px;padding:4px 8px;font-size:10px;font-weight:800;background:#eef2ff}.green{background:#ecfdf3;color:#027a48}.amber{background:#fffaeb;color:#b54708}.blue{background:#eff8ff;color:#175cd3}.section{display:none}.section.active{display:block}.notice{background:#fffaeb;border-radius:12px;padding:12px;font-size:13px;color:#7a2e0e;margin-top:12px}.templates{display:grid;grid-template-columns:1fr 1fr;gap:8px}.templates button{background:#eef2f6;color:#101828;font-size:12px}.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.dow{text-align:center;font-size:10px;font-weight:700;color:#667085}.day{min-height:60px;border:1px solid #eaecf0;border-radius:9px;padding:5px;font-size:11px}.dot{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}.table{overflow:auto}.table table{width:100%;border-collapse:collapse;font-size:12px}.table th,.table td{padding:8px;border-bottom:1px solid #eaecf0;text-align:right}.table th:first-child,.table td:first-child{text-align:left}nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;display:flex;justify-content:space-around;padding:8px 3px calc(8px + env(safe-area-inset-bottom));z-index:10}nav button{background:none;color:#344054;padding:5px;font-size:9px}
+
+.selected{outline:3px solid #175cd3;background:#eff8ff}.day{cursor:pointer}.legend{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.legend span{font-size:10px;padding:4px 7px;border-radius:12px}.rday{background:#ecfdf3}.rnight{background:#eef4ff}.otday{background:#fff4e5}.otnight{background:#f4ebff}.leave{background:#f2f4f7}
+.progress{height:10px;background:#eaecf0;border-radius:10px;overflow:hidden;margin-top:8px}.progress div{height:100%;background:#101828}
+.modal{display:none;position:fixed;inset:0;background:#10182888;z-index:30;padding:20px;overflow:auto}.modal.on{display:block}.modalbox{max-width:550px;margin:40px auto;background:white;border-radius:18px;padding:18px}
+
+@media(max-width:600px){
+ header{padding:calc(18px + env(safe-area-inset-top)) 16px 16px}
+ header h1{font-size:25px}
+ main{padding:12px 10px calc(112px + env(safe-area-inset-bottom))}
+ .card{border-radius:16px;padding:14px;margin-bottom:11px}
+ .grid,.grid.four{grid-template-columns:1fr 1fr}
+ input,select{min-height:46px;font-size:16px}
+ button{min-height:44px}
+ .templates button{min-height:58px}
+ .cal{gap:3px}.day{min-height:58px;padding:4px}.dow{font-size:9px}
+ nav{overflow-x:auto;justify-content:space-between}
+ nav button{min-width:58px;font-size:9px}
+}
+.install{background:#eff8ff;border:1px solid #b2ddff;border-radius:14px;padding:13px;margin-bottom:12px}
+.install strong{display:block;margin-bottom:4px}
+
+.pattern-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:12px}.pday{border:1px solid #eaecf0;border-radius:10px;min-height:58px;padding:5px;text-align:center;background:#fff}.pday small{display:block;color:#667085;font-size:9px}.pday button{width:100%;min-height:34px;margin-top:3px;padding:4px;background:#f2f4f7;color:#344054;font-size:14px}.pday.D button{background:#dcfae6;color:#067647}.pday.N button{background:#e0e7ff;color:#3538cd}.patternDot{font-weight:800;text-align:center;border-radius:6px;margin-top:3px;padding:3px}.patternDot.D{background:#dcfae6;color:#067647}.patternDot.N{background:#e0e7ff;color:#3538cd}.pattern-summary{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.pattern-summary span{background:#f2f4f7;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:700}.patternDot.override{outline:2px solid #f79009;outline-offset:-2px}.patternDot.AL,.patternDot.TR,.patternDot.SICK,.patternDot.OFF{background:#fff4e5;color:#b54708}.override-list .row{align-items:center}.mini{font-size:10px;color:#667085}
+
+/* v9.4 commercial rota UI */
+.app-hero{background:linear-gradient(145deg,#101828,#1d2939);color:#fff;border-radius:22px;padding:18px;margin-bottom:12px;box-shadow:0 10px 30px #10182820}.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.hero-kicker{font-size:12px;color:#98a2b3;font-weight:700;text-transform:uppercase;letter-spacing:.06em}.hero-month{font-size:24px;font-weight:800;margin-top:2px}.hero-basic{text-align:right}.hero-basic small{display:block;color:#98a2b3;font-size:11px}.hero-basic strong{font-size:19px}.hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}.hero-stat{background:#ffffff12;border:1px solid #ffffff16;border-radius:14px;padding:10px}.hero-stat small{display:block;color:#d0d5dd;font-size:10px}.hero-stat strong{display:block;margin-top:3px;font-size:15px}.monthbar{display:grid;grid-template-columns:42px 1fr 42px;gap:8px;align-items:center}.monthbar button{height:42px;padding:0;font-size:20px;background:#f2f4f7;color:#101828}.monthbar input{margin:0;text-align:center;font-weight:800;border:0;background:#f8fafc}.calendar-card{padding:14px 10px}.calendar-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.calendar-head h2{margin:0}.calendar-head .muted{font-size:11px}.cal{gap:5px}.day{min-height:70px;border:0;background:#f8fafc;border-radius:12px;padding:6px;transition:.12s}.day:active{transform:scale(.97)}.day>strong{font-size:12px}.patternDot{margin-top:5px!important;border-radius:8px!important;padding:4px 3px!important;text-align:center;font-weight:900!important}.quick-add{position:fixed;right:18px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:9;border-radius:999px;padding:13px 17px;box-shadow:0 8px 22px #10182835;font-size:14px}.tool-details{background:#fff;border-radius:18px;margin-bottom:12px;box-shadow:0 2px 10px #10182810;overflow:hidden}.tool-details summary{list-style:none;padding:16px 18px;font-weight:800;cursor:pointer}.tool-details summary::-webkit-details-marker{display:none}.tool-details summary:after{content:'›';float:right;font-size:22px;color:#98a2b3;transform:rotate(90deg)}.tool-details[open] summary:after{transform:rotate(-90deg)}.tool-details .inside{padding:0 16px 16px}.status-pill{display:inline-flex;align-items:center;gap:5px;background:#ecfdf3;color:#027a48;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:800}.status-dot{width:7px;height:7px;border-radius:50%;background:#12b76a}.section-title{display:flex;align-items:center;justify-content:space-between}.mini-action{background:#f2f4f7;color:#344054;padding:7px 10px;font-size:11px}.legend{margin-top:10px!important}.dev-tools{border:1px dashed #d0d5dd!important;background:#fcfcfd!important}nav{box-shadow:0 -5px 20px #1018280a;border-top:0}nav button{font-size:10px!important}header{padding-bottom:18px}
+</style></head>
+<body>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.4 UI</div><header><h1>Shift Pay HQ</h1><p>v9.4 · smarter rota dashboard</p></header><main>
+
+<section id="rota" class="section active">
+<div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
+
+<div class="app-hero">
+  <div class="hero-top"><div><div class="hero-kicker">Your rota</div><div class="hero-month" id="heroMonth">September 2026</div><div style="margin-top:7px"><span class="status-pill"><span class="status-dot"></span> 9-week rota active</span></div></div><div class="hero-basic"><small>Monthly basic</small><strong id="heroBasic">£0.00</strong></div></div>
+  <div class="hero-stats"><div class="hero-stat"><small>Pattern days</small><strong id="heroRosterDays">0</strong></div><div class="hero-stat"><small>Pattern nights</small><strong id="heroRosterNights">0</strong></div><div class="hero-stat"><small>OT logged</small><strong id="heroOT">0h</strong></div></div>
+</div>
+
+<div class="card"><div class="monthbar"><button onclick="changeMonth(-1)">‹</button><input id="month" type="month" value="2026-09" onchange="render()"><button onclick="changeMonth(1)">›</button></div><input id="basicDisplay" readonly style="display:none"></div>
+
+<div class="card calendar-card"><div class="calendar-head"><div><h2>Roster</h2><span class="muted">Tap dates to select</span></div><button class="mini-action" onclick="clearSelected()">Clear</button></div><div id="calendar" class="cal"></div>
+<div class="legend"><span class="rday">Roster day</span><span class="rnight">Roster night</span><span class="otday">OT day</span><span class="otnight">OT night</span><span class="leave">Leave/other</span></div></div>
+
+<button class="quick-add" onclick="document.getElementById('shiftEditor').open=true;document.getElementById('shiftEditor').scrollIntoView({behavior:'smooth'})">＋ Add shift</button>
+
+<details class="tool-details"><summary>Quick shifts</summary><div class="inside"><div class="templates">
+<button onclick="preset('06:00','18:00','roster')">Roster 06:00–18:00</button><button onclick="preset('18:00','06:00','roster')">Roster 18:00–06:00</button>
+<button onclick="preset('06:30','18:30','roster')">Roster 06:30–18:30</button><button onclick="preset('18:30','06:30','roster')">Roster 18:30–06:30</button>
+<button onclick="preset('06:00','18:00','ot')">OT 06:00–18:00</button><button onclick="preset('18:00','06:00','ot')">OT 18:00–06:00</button>
+<button onclick="preset('06:30','18:30','ot')">OT 06:30–18:30</button><button onclick="preset('18:30','06:30','ot')">OT 18:30–06:30</button></div></div></details>
+
+<details class="tool-details"><summary>Bulk edit <span class="badge blue"><span id="selectedCount">0</span> selected</span></summary><div class="inside"><div class="grid"><div><label>Apply template</label><select id="bulkTemplate">
+<option value="r0600d">Roster 06:00–18:00</option><option value="r0600n">Roster 18:00–06:00</option><option value="r0630d">Roster 06:30–18:30</option><option value="r0630n">Roster 18:30–06:30</option><option value="o0600d">OT 06:00–18:00</option><option value="o0600n">OT 18:00–06:00</option><option value="o0630d">OT 06:30–18:30</option><option value="o0630n">OT 18:30–06:30</option><option value="leave">Annual leave</option><option value="training">Training</option><option value="sick">Sickness</option></select></div><div><label>OT multiplier</label><select id="bulkMult"><option value="1.5">1.5×</option><option value="2">2×</option></select></div></div><button class="wide" onclick="applyBulk()">Add to selected dates</button></div></details>
+
+<details id="shiftEditor" class="tool-details"><summary>Add / customise shift</summary><div class="inside"><div class="grid four"><div><label>Date</label><input id="date" type="date" value="2026-09-01"></div><div><label>Planned start</label><input id="start" type="time" value="06:00"></div><div><label>Planned finish</label><input id="finish" type="time" value="18:00"></div><div><label>Actual finish</label><input id="actualFinish" type="time" value="18:00"></div><div><label>Type</label><select id="type"><option value="roster">Rostered</option><option value="ot">Overtime</option></select></div><div><label>OT rate</label><select id="mult"><option value="1.5">1.5×</option><option value="2">2×</option></select></div><div><label>Flat payment £</label><input id="flat" type="number" value="0" step=".01"></div><div><label>Note</label><input id="note"></div></div><button class="wide" onclick="addShift()">Add shift</button></div></details>
+
+<div class="card"><div class="section-title"><h2>Month activity</h2><span class="muted">Recorded shifts</span></div><div class="stats"><div class="stat"><small>Rostered</small><strong id="rh">0h</strong></div><div class="stat"><small>Overtime</small><strong id="oh">0h</strong></div><div class="stat"><small>Extended</small><strong id="eh">0h</strong></div><div class="stat"><small>Unsocial</small><strong id="uh">0h</strong></div></div><div id="list"></div></div>
+<div style="display:none"><span id="progressText"></span><div id="progressBar"></div></div>
+</section>
+
+<section id="ecf" class="section">
+<div class="card"><h2>ECF-style summary</h2><div class="row"><span>Planned / rostered hours</span><strong id="ecfPlanned"></strong></div><div class="row"><span>Actual duty hours</span><strong id="ecfActual"></strong></div><div class="row"><span>Time & half</span><strong id="ecfTH"></strong></div><div class="row"><span>Extended duty</span><strong id="ecfExt"></strong></div><div class="row"><span>Overtime total</span><strong id="ecfOT"></strong></div><div class="row"><span>Mon–Sat unsocial</span><strong id="ecfMS"></strong></div><div class="row"><span>Sunday unsocial</span><strong id="ecfSun"></strong></div><div class="row"><span>Public unsocial</span><strong id="ecfPH">0.00h</strong></div><div class="row"><span>Total unsocial</span><strong id="ecfUS"></strong></div>
+<div id="sourceTotals" class="notice"></div>
+<div class="notice">Unsocial time is calculated only across the planned rostered shift. Any time beyond planned finish is separated as extended duty, matching the pattern in the July/August ECFs.</div></div>
+</section>
+
+<section id="payroll" class="section">
+<div class="card"><h2>Payroll deadline</h2><div class="grid four"><div><label>Payroll month</label><input id="pmonth" type="month" value="2026-09" onchange="loadDeadline();renderPayroll()"></div><div><label>Cut-off date</label><input id="cutDate" type="date"></div><div><label>Cut-off time</label><input id="cutTime" type="time"></div><div><label>Pay date</label><input id="payDate" type="date"></div></div><button class="wide" onclick="saveDeadline()">Save deadline</button></div>
+<div class="card"><h2>OT routing</h2><div id="routing"></div></div></section>
+
+<section id="compare" class="section">
+<div class="card"><h2>Payslip checker</h2><div class="grid"><div><label>Payslip month</label><input id="compareMonth" type="month" value="2026-09" onchange="loadPayslip()"></div><div><label>Unsocial units</label><input id="aUSUnits" type="number" step=".01"></div></div>
+<div class="grid four"><div><label>Basic £</label><input id="aBasic" type="number" step=".01"></div><div><label>Unsocial £</label><input id="aUS" type="number" step=".01"></div><div><label>Sunday £</label><input id="aSunday" type="number" step=".01"></div><div><label>Overtime £</label><input id="aOT" type="number" step=".01"></div><div><label>Gross £</label><input id="aGross" type="number" step=".01"></div><div><label>PAYE £</label><input id="aTax" type="number" step=".01"></div><div><label>NI £</label><input id="aNI" type="number" step=".01"></div><div><label>Pension £</label><input id="aPen" type="number" step=".01"></div><div><label>Net £</label><input id="aNet" type="number" step=".01"></div></div><button class="wide" onclick="savePayslip()">Save actual payslip</button></div>
+<div class="card"><h2>Predicted vs actual</h2><div id="comparison" class="table"></div></div></section>
+
+<section id="planner" class="section">
+<div class="card"><h2>What-if OT Planner</h2><p class="muted">Try overtime without adding it to your actual rota.</p>
+<div class="grid four"><div><label>Shift length</label><select id="planHours"><option value="12">12 hours</option><option value="10">10 hours</option><option value="8">8 hours</option></select></div>
+<div><label>Number of shifts</label><input id="planCount" type="number" value="1" min="1" oninput="renderPlanner()"></div>
+<div><label>OT rate</label><select id="planMult" onchange="renderPlanner()"><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
+<div><label>Pay rate date</label><input id="planDate" type="date" value="2026-09-19" onchange="renderPlanner()"></div></div>
+<div class="row"><span>Extra hours</span><strong id="planTotalHours"></strong></div><div class="row"><span>Estimated gross OT</span><strong id="planGross"></strong></div>
+<div class="row"><span>Approx extra PAYE</span><strong id="planTax"></strong></div><div class="row"><span>Approx extra NI</span><strong id="planNI"></strong></div>
+<div class="row"><span>Approx extra take-home</span><strong id="planNet" class="total"></strong></div>
+<div class="notice">Planner figures are indicative. Unsocial pay is excluded until the SAS rule is validated, and PAYE can differ on a real cumulative payroll.</div></div>
+<div class="card"><h2>OT status</h2><div class="stats"><div class="stat"><small>Worked</small><strong id="dashWorked"></strong></div><div class="stat"><small>Awaiting submission</small><strong id="dashWaiting"></strong></div><div class="stat"><small>Routed to payroll</small><strong id="dashRouted"></strong></div><div class="stat"><small>Gross earned</small><strong id="dashGross"></strong></div></div></div>
+</section>
+<section id="settings" class="section">
+<div class="card"><h2>Pay history</h2><p class="muted">Effective-dated pay means promotions and increments can happen part-way through a month.</p><div id="history"></div>
+<div class="grid four"><div><label>Band</label><select id="hBand"><option value="5">5</option><option value="6">6</option></select></div><div><label>Annual salary £</label><input id="hSalary" type="number"></div><div><label>Effective from</label><input id="hFrom" type="date"></div><div><label>Effective to</label><input id="hTo" type="date"></div></div><button class="wide" onclick="addHistory()">Add pay period</button></div>
+<div class="card"><h2>Custom shift template</h2><div class="grid four"><div><label>Name</label><input id="ctName" placeholder="Late shift"></div><div><label>Start</label><input id="ctStart" type="time" value="07:00"></div><div><label>Finish</label><input id="ctFinish" type="time" value="19:00"></div><div><label>Type</label><select id="ctType"><option value="roster">Rostered</option><option value="ot">Overtime</option></select></div></div><button class="wide" onclick="saveCustomTemplate()">Save template</button><div id="customTemplates"></div></div>
+<div class="card"><h2>Roster Pattern <span class="badge blue">DEV</span></h2><p class="muted">Create a repeating rota using only Day, Night and Off. Pattern days do not contain shift times and do not affect pay calculations yet.</p>
+<div class="grid"><div><label>Pattern name</label><input id="patternName" value="My 9-week SAS rota"></div><div><label>Anchor date · Cycle day 1</label><input id="patternAnchor" type="date" value="2026-09-02"></div></div>
+<div class="grid"><div><label>Cycle length (days)</label><input id="patternLength" type="number" min="1" max="365" value="63" onchange="resizePattern()"></div><div><label>Quick action</label><button class="soft wide" onclick="loadJamiePattern()">Reload my 9-week rota</button></div></div>
+<div class="pattern-summary"><span id="pDays">0 Day</span><span id="pNights">0 Night</span><span id="pOff">0 Off</span></div>
+<p class="muted">Tap a cycle day to rotate: Off → D → N → Off.</p><div id="patternGrid" class="pattern-grid"></div>
+<button class="wide" onclick="savePattern()">Save & activate pattern</button><button class="soft wide" onclick="clearPattern()">Clear pattern</button>
+<div id="patternStatus" class="notice" style="display:none"></div></div>
+<div class="card"><h2>Roster overrides <span class="badge amber">NEW</span></h2><p class="muted">Change one date without altering your repeating 9-week pattern. Useful for swaps, leave, training or sickness. Overrides do not affect pay calculations yet.</p>
+<div class="grid"><div><label>Date</label><input id="overrideDate" type="date" value="2026-09-19"></div><div><label>Show on rota</label><select id="overrideType"><option value="D">Day (D)</option><option value="N">Night (N)</option><option value="OFF">Off</option><option value="AL">Annual leave (AL)</option><option value="TR">Training (TR)</option><option value="SICK">Sickness (S)</option></select></div></div>
+<div class="grid"><button class="wide" onclick="saveOverride()">Save override</button><button class="soft wide" onclick="removeOverrideForDate()">Use normal pattern</button></div>
+<div id="overrideList" class="override-list"></div></div>
+<div class="card"><h2>Backup & restore</h2><p class="muted">Your data is stored on this device. Export a backup before clearing browser data or changing phones.</p><div class="grid"><button class="soft" onclick="exportBackup()">Export backup</button><button class="soft" onclick="document.getElementById('importFile').click()">Restore backup</button></div><input id="importFile" type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this.files[0])"></div>
+<div class="card dev-tools"><h2>Development data <span class="badge amber">DEV</span></h2><p class="muted">July and August 2026 ECF test shifts used to validate the current pay engine.</p><button class="soft wide" onclick="loadSeed()">Reload July & August ECF shifts</button></div>
+<div class="card"><h2>Deductions</h2><div class="grid four"><div><label>Hours/week</label><input id="weekly" value="36" type="number" onchange="saveSettings()"></div><div><label>Tax region</label><select id="taxRegion" onchange="saveSettings()"><option value="scotland">Scotland</option><option value="rUK">England/Wales/NI</option></select></div><div><label>Tax code</label><input id="taxCode" value="S1257L" onchange="saveSettings()"></div><div><label>NI category</label><select id="niCat" onchange="saveSettings()"><option>A</option><option>J</option><option>C</option></select></div><div><label>Pension %</label><input id="pension" type="number" value="9.8" step=".1" onchange="saveSettings()"></div><div><label>Other deductions £</label><input id="other" type="number" value="1.50" step=".01" onchange="saveSettings()"></div></div></div></section>
+</main>
+<nav><button onclick="show('rota')">📅<br>Rota</button><button onclick="show('ecf')">📋<br>ECF</button><button onclick="show('payroll')">⏱️<br>Payroll</button><button onclick="show('compare')">🧾<br>Compare</button><button onclick="show('planner')">🧮<br>OT Planner</button><button onclick="show('settings')">⚙️<br>Settings</button></nav>
+<script>
+const fmt=n=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(n), hfmt=n=>(Math.round(n*60)/60).toFixed(2)+'h';
+const seedShifts=[
+{"id":701,"date":"2026-07-06","start":"18:00","finish":"06:00","actualFinish":"06:00","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E","submitted":""},
+{"id":702,"date":"2026-07-07","start":"18:00","finish":"06:00","actualFinish":"06:00","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E","submitted":""},
+{"id":703,"date":"2026-07-10","start":"05:30","finish":"17:30","actualFinish":"17:30","type":"ot","mult":1.5,"flat":0,"note":"Lothian Events · ECF 12h T1/2","submitted":""},
+{"id":704,"date":"2026-07-11","start":"06:30","finish":"18:30","actualFinish":"18:45","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E · 15m extended","submitted":""},
+{"id":705,"date":"2026-07-12","start":"06:30","finish":"18:30","actualFinish":"18:30","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E","submitted":""},
+{"id":706,"date":"2026-07-13","start":"18:30","finish":"06:30","actualFinish":"06:30","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E","submitted":""},
+{"id":707,"date":"2026-07-14","start":"18:30","finish":"06:30","actualFinish":"06:30","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E","submitted":""},
+{"id":708,"date":"2026-07-20","start":"18:30","finish":"04:30","actualFinish":"05:30","type":"ot","mult":1.5,"flat":0,"note":"Haddington A&E · ECF 11h T1/2 incl 1h extended","submitted":""},
+{"id":709,"date":"2026-07-24","start":"18:00","finish":"06:00","actualFinish":"06:00","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E","submitted":""},
+{"id":710,"date":"2026-07-26","start":"18:00","finish":"06:00","actualFinish":"07:20","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E · 1h20 extended","submitted":""},
+
+{"id":801,"date":"2026-08-03","start":"06:00","finish":"18:00","actualFinish":"18:30","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E · 30m extended","submitted":""},
+{"id":802,"date":"2026-08-04","start":"06:00","finish":"18:00","actualFinish":"18:30","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E · 30m extended","submitted":""},
+{"id":803,"date":"2026-08-08","start":"06:00","finish":"18:00","actualFinish":"18:00","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E","submitted":""},
+{"id":804,"date":"2026-08-09","start":"06:00","finish":"18:00","actualFinish":"18:15","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E · 15m extended","submitted":""},
+{"id":805,"date":"2026-08-12","start":"06:30","finish":"18:30","actualFinish":"18:30","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E","submitted":""},
+{"id":806,"date":"2026-08-13","start":"06:30","finish":"18:30","actualFinish":"20:00","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E · 1h30 extended","submitted":""},
+{"id":807,"date":"2026-08-14","start":"06:30","finish":"18:30","actualFinish":"18:45","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E · 15m extended","submitted":""},
+{"id":808,"date":"2026-08-17","start":"06:30","finish":"18:30","actualFinish":"18:30","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E · Band 5","submitted":""},
+{"id":809,"date":"2026-08-18","start":"06:30","finish":"18:30","actualFinish":"18:30","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E · Band 6 effective","submitted":""},
+{"id":810,"date":"2026-08-19","start":"18:30","finish":"06:30","actualFinish":"06:30","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E","submitted":""},
+{"id":811,"date":"2026-08-20","start":"19:30","finish":"07:30","actualFinish":"07:30","type":"ot","mult":1.5,"flat":0,"note":"ECS Meadows · ECF 12h T1/2","submitted":""},
+{"id":812,"date":"2026-08-23","start":"18:00","finish":"06:00","actualFinish":"06:00","type":"ot","mult":1.5,"flat":0,"note":"Haddington A&E · ECF 12h T1/2","submitted":""},
+{"id":813,"date":"2026-08-28","start":"18:30","finish":"06:30","actualFinish":"06:30","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E","submitted":""},
+{"id":814,"date":"2026-08-29","start":"18:30","finish":"06:30","actualFinish":"06:30","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E","submitted":""},
+{"id":815,"date":"2026-08-30","start":"18:30","finish":"06:30","actualFinish":"06:30","type":"roster","mult":1.5,"flat":0,"note":"Haddington A&E","submitted":""}
+];
+let shifts=JSON.parse(localStorage.getItem('sphq7_shifts')||'null');
+if(!shifts){shifts=seedShifts;localStorage.setItem('sphq7_shifts',JSON.stringify(shifts));}
+let deadlines=JSON.parse(localStorage.getItem('sphq7_deadlines')||'{"2026-09":{"date":"2026-09-08","time":"13:00","payDate":"2026-09-24"}}');
+let settings=JSON.parse(localStorage.getItem('sphq7_settings')||'{"weekly":36,"taxRegion":"scotland","taxCode":"S1257L","niCat":"A","pension":9.8,"other":1.5}');
+let selectedDates=new Set(); let customData=JSON.parse(localStorage.getItem('sphq8_custom')||'[]');
+const JAMIE_9_WEEK_PATTERN={name:'My 9-week SAS rota',anchor:'2026-09-02',active:true,days:(()=>{let a=Array(63).fill('');let D=['2026-09-07','2026-09-08','2026-09-12','2026-09-13','2026-09-30','2026-10-01','2026-10-02','2026-10-05','2026-10-06','2026-10-10','2026-10-11','2026-10-14','2026-10-15','2026-10-16','2026-10-19','2026-10-20'],N=['2026-09-02','2026-09-03','2026-09-14','2026-09-15','2026-09-25','2026-09-26','2026-09-27','2026-10-21','2026-10-30','2026-10-31','2026-11-01'];const dd=(x,y)=>Math.round((new Date(x+'T12:00:00')-new Date(y+'T12:00:00'))/86400000);D.forEach(x=>a[dd(x,'2026-09-02')]='D');N.forEach(x=>a[dd(x,'2026-09-02')]='N');return a})()};
+let rosterPattern=JSON.parse(localStorage.getItem('sphq92_pattern')||'null');
+if(!rosterPattern){rosterPattern=JAMIE_9_WEEK_PATTERN;localStorage.setItem('sphq92_pattern',JSON.stringify(rosterPattern));}
+let patternDraft=[];
+let rosterOverrides=JSON.parse(localStorage.getItem('sphq93_overrides')||'{}');
+let historyData=JSON.parse(localStorage.getItem('sphq7_history')||'[{"band":5,"salary":34544,"from":"2026-04-01","to":"2026-08-17"},{"band":6,"salary":43231,"from":"2026-08-18","to":""}]');
+for(let k of ['weekly','taxRegion','taxCode','niCat','pension','other'])document.getElementById(k).value=settings[k];
+function mins(t){let a=t.split(':').map(Number);return a[0]*60+a[1]} function duration(a,b){let x=mins(b)-mins(a);if(x<=0)x+=1440;return x/60}
+function salaryOn(ds){let p=historyData.find(x=>ds>=x.from&&(!x.to||ds<=x.to));return p?+p.salary:43231} function rateOn(ds){return salaryOn(ds)/(+weekly.value*52)}
+function currentSalary(){return salaryOn(month.value+'-28')} function preset(a,b,t){start.value=a;finish.value=b;actualFinish.value=b;type.value=t}
+function planned(s){return duration(s.start,s.finish)} function actual(s){return duration(s.start,s.actualFinish||s.finish)} function extended(s){return s.type==='roster'?Math.max(0,actual(s)-planned(s)):0}
+function unsocialSplit(s){if(s.type!=='roster')return {ms:0,sun:0};let a=new Date(s.date+'T'+s.start),b=new Date(s.date+'T'+s.finish);if(b<=a)b.setDate(b.getDate()+1);let ms=0,sun=0,c=new Date(a);while(c<b){let n=new Date(Math.min(+c+15*60000,+b)),d=c.getDay(),m=c.getHours()*60+c.getMinutes(),q=d===0||d===6||(d>0&&d<6&&(m<420||m>=1140));if(q){let z=(n-c)/3600000;if(d===0)sun+=z;else ms+=z}c=n}return {ms,sun}}
+function addShift(){shifts.push({id:Date.now(),date:date.value,start:start.value,finish:finish.value,actualFinish:actualFinish.value,type:type.value,mult:+mult.value,flat:+flat.value||0,note:note.value,submitted:''});localStorage.setItem('sphq7_shifts',JSON.stringify(shifts));render()}
+function delShift(id){shifts=shifts.filter(x=>x.id!==id);localStorage.setItem('sphq7_shifts',JSON.stringify(shifts));render()}
+function dateDiffDays(a,b){let A=new Date(a+'T12:00:00'),B=new Date(b+'T12:00:00');return Math.round((A-B)/86400000)}
+function basePatternForDate(ds){if(!rosterPattern||!rosterPattern.active||!rosterPattern.anchor||!rosterPattern.days?.length)return '';let n=rosterPattern.days.length,idx=((dateDiffDays(ds,rosterPattern.anchor)%n)+n)%n;return rosterPattern.days[idx]||''}
+function patternForDate(ds){let o=rosterOverrides[ds];if(o)return o.type==='OFF'?'':o.type;return basePatternForDate(ds)}
+function patternInfo(ds){let o=rosterOverrides[ds];return {base:basePatternForDate(ds),effective:patternForDate(ds),override:o||null}}
+function drawCal(){let [y,m]=month.value.split('-').map(Number),f=new Date(y,m-1,1),days=new Date(y,m,0).getDate(),o=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>`<div class="dow">${x}</div>`).join('');o+='<div></div>'.repeat((f.getDay()+6)%7);for(let d=1;d<=days;d++){let ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`,ss=shifts.filter(x=>x.date===ds),cls=selectedDates.has(ds)?' selected':'',pi=patternInfo(ds),rp=pi.effective,label=rp==='SICK'?'S':rp;o+=`<div class="day${cls}" onclick="toggleDate('${ds}')"><strong>${d}</strong>${(rp||pi.override)?`<div class="patternDot ${rp||'OFF'} ${pi.override?'override':''}">${label||'OFF'}${pi.override?'<span class="mini"> · override</span>':''}</div>`:''}${ss.map(x=>{let night=x.start>x.finish, c=x.type==='ot'?(night?'otnight':'otday'):(x.type==='leave'||x.type==='training'||x.type==='sick'?'leave':(night?'rnight':'rday'));return `<div class="dot ${c}">${x.type==='ot'?'OT':x.type==='roster'?'R':x.type} ${x.start||''}</div>`}).join('')}</div>`}calendar.innerHTML=o;selectedCount.textContent=selectedDates.size}
+function toggleDate(ds){selectedDates.has(ds)?selectedDates.delete(ds):selectedDates.add(ds);drawCal()}
+function clearSelected(){selectedDates.clear();drawCal()}
+function applyBulk(){let v=bulkTemplate.value,map={r0600d:['06:00','18:00','roster'],r0600n:['18:00','06:00','roster'],r0630d:['06:30','18:30','roster'],r0630n:['18:30','06:30','roster'],o0600d:['06:00','18:00','ot'],o0600n:['18:00','06:00','ot'],o0630d:['06:30','18:30','ot'],o0630n:['18:30','06:30','ot']};selectedDates.forEach(ds=>{if(map[v]){let z=map[v];shifts.push({id:Date.now()+Math.random(),date:ds,start:z[0],finish:z[1],actualFinish:z[1],type:z[2],mult:+bulkMult.value,flat:0,note:'Bulk entry',submitted:''})}else{shifts.push({id:Date.now()+Math.random(),date:ds,start:'09:00',finish:'09:01',actualFinish:'09:01',type:v,mult:1,flat:0,note:v,submitted:''})}});localStorage.setItem('sphq7_shifts',JSON.stringify(shifts));clearSelected();render()}
+function monthStats(){let L=shifts.filter(s=>s.date.startsWith(month.value)),ro=0,ot=0,ext=0,ms=0,sun=0,otPay=0,flatPay=0;L.forEach(s=>{let u=unsocialSplit(s);ms+=u.ms;sun+=u.sun;if(s.type==='roster'){ro+=planned(s);ext+=extended(s)}else if(s.type==='ot'){ot+=actual(s);otPay+=actual(s)*rateOn(s.date)*s.mult}flatPay+=s.flat});return {L,ro,ot,ext,ms,sun,otPay,flatPay}}
+function changeMonth(delta){let [y,m]=month.value.split('-').map(Number);let d=new Date(y,m-1+delta,1);month.value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;render()}
+function renderHero(){if(!document.getElementById('heroMonth'))return;let [y,m]=month.value.split('-').map(Number),label=new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});heroMonth.textContent=label;heroBasic.textContent=fmt(currentSalary()/12);let days=new Date(y,m,0).getDate(),dc=0,nc=0;for(let d=1;d<=days;d++){let ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`,v=patternInfo(ds).effective;if(v==='D')dc++;if(v==='N')nc++}heroRosterDays.textContent=dc;heroRosterNights.textContent=nc;let x=monthStats();heroOT.textContent=hfmt(x.ot)}
+function render(){basicDisplay.value=fmt(currentSalary()/12);drawCal();renderHero();let x=monthStats(),html='';x.L.sort((a,b)=>a.date.localeCompare(b.date)).forEach(s=>{let u=unsocialSplit(s);html+=`<div class="shift"><strong>${s.date}</strong> <span class="badge">${s.type==='ot'?'OT '+s.mult+'×':'ROSTER'}</span> <span class="badge blue">Band ${historyData.find(x=>s.date>=x.from&&(!x.to||s.date<=x.to))?.band||'?'}</span><br><span class="muted">Planned ${s.start}–${s.finish} · Actual finish ${s.actualFinish||s.finish}${extended(s)?' · '+hfmt(extended(s))+' extended':''}</span>${u.ms+u.sun?`<br><span class="muted">US Mon–Sat ${hfmt(u.ms)} · Sunday ${hfmt(u.sun)}</span>`:''}<br><button class="danger" onclick="delShift(${s.id})">Delete</button></div>`});rh.textContent=hfmt(x.ro);oh.textContent=hfmt(x.ot);eh.textContent=hfmt(x.ext);uh.textContent=hfmt(x.ms+x.sun);list.innerHTML=html||'<p class="muted">No shifts.</p>';let target=(+weekly.value*52/12),pct=Math.min(100,(x.ro/target)*100);progressText.textContent=hfmt(x.ro)+' / '+hfmt(target);progressBar.style.width=pct+'%';renderECF();renderHistory();renderPayroll();renderComparison()}
+
+function loadSeed(){
+  let others=shifts.filter(s=>!s.date.startsWith("2026-07")&&!s.date.startsWith("2026-08"));
+  shifts=[...seedShifts,...others];
+  localStorage.setItem('sphq7_shifts',JSON.stringify(shifts));
+  render();
+}
+function renderSourceTotals(){
+ let refs={
+  "2026-07":"ECF reference: planned 175h36 · actual duty 120h35 · T1/2 24h35 · extended duty 2h35 · overtime total 24h35 · Mon–Sat unsocial 78h · Sunday 18h · total unsocial 96h.",
+  "2026-08":"ECF reference: planned 180h · actual duty 183h · T1/2 27h · extended duty 3h · overtime total 27h · Mon–Sat unsocial 48h · Sunday 24h · total unsocial 72h."
+ };
+ sourceTotals.textContent=refs[month.value]||"No imported ECF reference totals for this month.";
+}
+
+function renderECF(){let x=monthStats();renderSourceTotals();ecfPlanned.textContent=hfmt(x.ro);ecfActual.textContent=hfmt(x.ro+x.ext+x.ot);ecfTH.textContent=hfmt(x.ot+x.ext);ecfExt.textContent=hfmt(x.ext);ecfOT.textContent=hfmt(x.ot+x.ext);ecfMS.textContent=hfmt(x.ms);ecfSun.textContent=hfmt(x.sun);ecfUS.textContent=hfmt(x.ms+x.sun)}
+function loadDeadline(){let d=deadlines[pmonth.value]||{};cutDate.value=d.date||pmonth.value+'-01';cutTime.value=d.time||'13:00';payDate.value=d.payDate||''}
+function saveDeadline(){deadlines[pmonth.value]={date:cutDate.value,time:cutTime.value,payDate:payDate.value};localStorage.setItem('sphq7_deadlines',JSON.stringify(deadlines));renderPayroll()}
+function nextM(mm){let [y,m]=mm.split('-').map(Number),d=new Date(y,m,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+function route(s){if(!s.submitted)return null;for(let pm of Object.keys(deadlines).sort()){let d=deadlines[pm];if(new Date(s.submitted)<=new Date(d.date+'T'+d.time))return pm}let a=Object.keys(deadlines).sort();return nextM(a[a.length-1]||s.date.slice(0,7))}
+function setSub(id,v){shifts.find(x=>x.id===id).submitted=v;localStorage.setItem('sphq7_shifts',JSON.stringify(shifts));renderPayroll();renderComparison()}
+function renderPayroll(){let h='';shifts.filter(s=>s.type==='ot').forEach(s=>{let r=route(s),v=actual(s)*rateOn(s.date)*s.mult;h+=`<div class="shift"><strong>${s.date}</strong> · ${hfmt(actual(s))} · ${fmt(v)}<br><label>Submitted / authorised</label><input type="datetime-local" value="${s.submitted}" onchange="setSub(${s.id},this.value)"><br><span class="badge ${r?'green':'amber'}">${r?'Expected '+r:'Awaiting submission'}</span></div>`});routing.innerHTML=h||'<p class="muted">No overtime.</p>'}
+function renderHistory(){history.innerHTML=historyData.sort((a,b)=>a.from.localeCompare(b.from)).map((x,i)=>`<div class="row"><span><strong>Band ${x.band}</strong><br><span class="muted">${x.from} → ${x.to||'Current'}</span></span><strong>${fmt(x.salary)}</strong></div>`).join('')}
+function addHistory(){historyData.push({band:+hBand.value,salary:+hSalary.value,from:hFrom.value,to:hTo.value});localStorage.setItem('sphq7_history',JSON.stringify(historyData));render()}
+function initPatternDraft(){let len=Math.max(1,Math.min(365,+patternLength.value||63));if(rosterPattern&&rosterPattern.days?.length===len){patternDraft=[...rosterPattern.days];patternName.value=rosterPattern.name||'My rota';patternAnchor.value=rosterPattern.anchor||'2026-09-02'}else if(patternDraft.length!==len){patternDraft=Array(len).fill('')}renderPatternBuilder()}
+function resizePattern(){let len=Math.max(1,Math.min(365,+patternLength.value||63));patternLength.value=len;let old=[...patternDraft];patternDraft=Array.from({length:len},(_,i)=>old[i]||'');renderPatternBuilder()}
+function cyclePatternDay(i){patternDraft[i]=patternDraft[i]===''?'D':patternDraft[i]==='D'?'N':'';renderPatternBuilder()}
+function renderPatternBuilder(){if(!document.getElementById('patternGrid'))return;if(!patternDraft.length){let len=rosterPattern?.days?.length||63;patternLength.value=len;patternDraft=rosterPattern?.days?[...rosterPattern.days]:Array(len).fill('')}patternGrid.innerHTML=patternDraft.map((v,i)=>`<div class="pday ${v}"><small>${i+1}</small><button onclick="cyclePatternDay(${i})">${v||'Off'}</button></div>`).join('');let d=patternDraft.filter(x=>x==='D').length,n=patternDraft.filter(x=>x==='N').length;pDays.textContent=d+' Day';pNights.textContent=n+' Night';pOff.textContent=(patternDraft.length-d-n)+' Off'}
+function loadJamiePattern(){patternLength.value=63;patternName.value='My 9-week SAS rota';patternAnchor.value='2026-09-02';patternDraft=Array(63).fill('');let D=['2026-09-07','2026-09-08','2026-09-12','2026-09-13','2026-09-30','2026-10-01','2026-10-02','2026-10-05','2026-10-06','2026-10-10','2026-10-11','2026-10-14','2026-10-15','2026-10-16','2026-10-19','2026-10-20'],N=['2026-09-02','2026-09-03','2026-09-14','2026-09-15','2026-09-25','2026-09-26','2026-09-27','2026-10-21','2026-10-30','2026-10-31','2026-11-01'];D.forEach(ds=>patternDraft[dateDiffDays(ds,'2026-09-02')]='D');N.forEach(ds=>{patternDraft[dateDiffDays(ds,'2026-09-02')]='N'});renderPatternBuilder()}
+function savePattern(){rosterPattern={name:patternName.value||'My rota',anchor:patternAnchor.value,days:[...patternDraft],active:true};localStorage.setItem('sphq92_pattern',JSON.stringify(rosterPattern));patternStatus.style.display='block';patternStatus.textContent=`${rosterPattern.name} saved · ${rosterPattern.days.length}-day cycle · anchored ${rosterPattern.anchor}. Calendar overlay is active. No pay calculations were changed.`;render()}
+function clearPattern(){rosterPattern=null;patternDraft=Array(+patternLength.value||63).fill('');localStorage.removeItem('sphq92_pattern');patternStatus.style.display='block';patternStatus.textContent='Roster pattern cleared.';renderPatternBuilder();render()}
+function saveSettings(){settings={weekly:+weekly.value,taxRegion:taxRegion.value,taxCode:taxCode.value.toUpperCase(),niCat:niCat.value,pension:+pension.value,other:+other.value};localStorage.setItem('sphq7_settings',JSON.stringify(settings));render()}
+function savePayslip(){let o={usUnits:+aUSUnits.value,basic:+aBasic.value,us:+aUS.value,sunday:+aSunday.value,ot:+aOT.value,gross:+aGross.value,tax:+aTax.value,ni:+aNI.value,pen:+aPen.value,net:+aNet.value};localStorage.setItem('sphq7_payslip_'+compareMonth.value,JSON.stringify(o));renderComparison()}
+function loadPayslip(){let o=JSON.parse(localStorage.getItem('sphq7_payslip_'+compareMonth.value)||'{}');for(let [id,k] of [['aUSUnits','usUnits'],['aBasic','basic'],['aUS','us'],['aSunday','sunday'],['aOT','ot'],['aGross','gross'],['aTax','tax'],['aNI','ni'],['aPen','pen'],['aNet','net']])document.getElementById(id).value=o[k]??'';renderComparison()}
+function saveOverride(){let ds=overrideDate.value;if(!ds)return;rosterOverrides[ds]={type:overrideType.value,created:new Date().toISOString()};localStorage.setItem('sphq93_overrides',JSON.stringify(rosterOverrides));renderOverrides();render()}
+function removeOverrideForDate(){let ds=overrideDate.value;if(!ds)return;delete rosterOverrides[ds];localStorage.setItem('sphq93_overrides',JSON.stringify(rosterOverrides));renderOverrides();render()}
+function deleteOverride(ds){delete rosterOverrides[ds];localStorage.setItem('sphq93_overrides',JSON.stringify(rosterOverrides));renderOverrides();render()}
+function renderOverrides(){if(!document.getElementById('overrideList'))return;let rows=Object.entries(rosterOverrides).sort((a,b)=>a[0].localeCompare(b[0]));overrideList.innerHTML=rows.length?rows.map(([ds,o])=>{let base=basePatternForDate(ds)||'Off',lab=o.type==='OFF'?'Off':o.type==='SICK'?'Sickness':o.type;return `<div class="row"><span><strong>${ds}</strong><br><span class="muted">Pattern: ${base} → Override: ${lab}</span></span><button class="danger" onclick="deleteOverride('${ds}')">Remove</button></div>`}).join(''):'<p class="muted">No overrides yet. Your repeating pattern is untouched.</p>'}
+function renderComparison(){let a=JSON.parse(localStorage.getItem('sphq7_payslip_'+compareMonth.value)||'{}'),pm=compareMonth.value,ot=0,flatp=0;shifts.forEach(s=>{if(s.type==='ot'&&route(s)===pm){ot+=actual(s)*rateOn(s.date)*s.mult;flatp+=s.flat}});let pred={basic:salaryOn(pm+'-28')/12,ot:ot,gross:salaryOn(pm+'-28')/12+ot+flatp};let rows=[['Basic','basic'],['Overtime','ot'],['Gross','gross']];comparison.innerHTML='<table><tr><th>Item</th><th>Predicted</th><th>Actual</th><th>Difference</th></tr>'+rows.map(([n,k])=>`<tr><td>${n}</td><td>${fmt(pred[k]||0)}</td><td>${a[k]!=null?fmt(a[k]):'—'}</td><td>${a[k]!=null?fmt(a[k]-(pred[k]||0)):'—'}</td></tr>`).join('')+'</table>'}
+
+function marginalTaxRate(annual){if(settings.taxRegion!=='scotland')return annual>125140?.45:annual>50270?.40:.20;if(annual>125140)return .48;if(annual>75000)return .45;if(annual>43662)return .42;if(annual>31092)return .21;if(annual>15397)return .20;return .19}
+function renderPlanner(){if(!document.getElementById('planCount'))return;let h=+planHours.value,c=+planCount.value||0,m=+planMult.value,rate=rateOn(planDate.value),gross=h*c*rate*m,annual=salaryOn(planDate.value),tax=gross*marginalTaxRate(annual),ni=gross*.02,net=gross-tax-ni;planTotalHours.textContent=hfmt(h*c);planGross.textContent=fmt(gross);planTax.textContent='−'+fmt(tax);planNI.textContent='−'+fmt(ni);planNet.textContent=fmt(net);let ot=shifts.filter(s=>s.type==='ot'),wait=ot.filter(s=>!s.submitted),routed=ot.filter(s=>!!route(s));dashWorked.textContent=hfmt(ot.reduce((a,s)=>a+actual(s),0));dashWaiting.textContent=hfmt(wait.reduce((a,s)=>a+actual(s),0));dashRouted.textContent=hfmt(routed.reduce((a,s)=>a+actual(s),0));dashGross.textContent=fmt(ot.reduce((a,s)=>a+actual(s)*rateOn(s.date)*s.mult,0))}
+function saveCustomTemplate(){if(!ctName.value)return;customData.push({name:ctName.value,start:ctStart.value,finish:ctFinish.value,type:ctType.value});localStorage.setItem('sphq8_custom',JSON.stringify(customData));ctName.value='';renderCustom()}
+function useCustom(i){let x=customData[i];preset(x.start,x.finish,x.type);show('rota')}
+function renderCustom(){if(!document.getElementById('customTemplates'))return;customTemplates.innerHTML=customData.map((x,i)=>`<div class="row"><span>${x.name}<br><span class="muted">${x.start}–${x.finish} · ${x.type}</span></span><button class="soft" onclick="useCustom(${i})">Use</button></div>`).join('')||'<p class="muted">No custom templates yet.</p>'}
+function show(id){document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');if(id==='payroll')loadDeadline();if(id==='compare')loadPayslip();if(id==='settings'){initPatternDraft();renderOverrides()}render();renderPlanner();renderCustom()}
+loadDeadline();render();renderPlanner();renderCustom();renderPatternBuilder();renderOverrides();
+
+function exportBackup(){
+ const keys=Object.keys(localStorage).filter(k=>k.startsWith('sphq'));
+ const payload={app:"Shift Pay HQ",version:9,exported:new Date().toISOString(),data:{}};
+ keys.forEach(k=>payload.data[k]=localStorage.getItem(k));
+ const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ShiftPayHQ-backup.json";a.click();URL.revokeObjectURL(a.href);
+}
+function importBackup(file){
+ if(!file)return;
+ const r=new FileReader();
+ r.onload=()=>{try{const p=JSON.parse(r.result);if(!p.data)throw 0;Object.entries(p.data).forEach(([k,v])=>localStorage.setItem(k,v));alert("Backup restored. Shift Pay HQ will reload.");location.reload()}catch(e){alert("That backup file could not be read.")}};
+ r.readAsText(file);
+}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}
+window.addEventListener("DOMContentLoaded",()=>{
+ const standalone=window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone===true;
+ if(standalone && document.getElementById("installCard")) document.getElementById("installCard").style.display="none";
+});
+
+</script></body></html>
