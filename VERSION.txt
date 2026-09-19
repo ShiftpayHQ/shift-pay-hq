@@ -1,0 +1,4 @@
+Shift Pay HQ
+Version: 9.1 FIXED
+Build date: 19 September 2026
+When index.html opens, a 'v9.1 FIXED' badge must appear at the top-right.
