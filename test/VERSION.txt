@@ -1,2 +1,2 @@
-Shift Pay HQ v9.8.2 DEV
-ECF bridge and evidence UI; pay engine unchanged.
+Shift Pay HQ v9.8.3 DEV
+Rota → ECF conversion and shift confirmation foundation.
