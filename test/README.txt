@@ -1,7 +1,9 @@
-Shift Pay HQ v9.10.3f SCANNER ROUTE + CACHE FIX DEV
+Shift Pay HQ v9.10.3g DEV
 
-Purpose: prove the current photo handler is executing and force browsers off the stale v9.10.3c service-worker cache.
+Scanner execution fix built from the confirmed-working v9.10.3f route/cache build.
 
-Expected first scanner status: Scanner v2 started ✓
-Then OCR worker diagnostics from v9.10.3e.
-No payroll rules changed.
+Fix: restores the missing setScanField helper used by OCR payroll-row mapping. This was the exact runtime error exposed by v9.10.3f: setScanField is not defined.
+
+No payroll rules, rota logic, navigation, or pay calculations were changed.
+
+Test: confirm Rota / Pay / Payslips / Settings, then scan the same payslip and watch the OCR stage/result.
