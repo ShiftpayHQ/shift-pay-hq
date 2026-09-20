@@ -93,7 +93,7 @@
 .payslip-choice{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:12px 0}.payslip-choice button,.payslip-choice label{border:1px solid #d0d5dd;background:#fff;color:#101828;border-radius:16px;padding:16px 10px;text-align:center;font-weight:800;cursor:pointer;margin:0}.payslip-choice .primary-choice{background:#101828;color:#fff;border-color:#101828}.payslip-choice small{display:block;font-weight:500;margin-top:5px;opacity:.72}.scan-preview{display:none;border:1px solid #b2ddff;background:#eff8ff;border-radius:16px;padding:12px;margin:12px 0}.scan-preview.on{display:block}.scan-preview img{width:100%;max-height:300px;object-fit:contain;border-radius:12px;background:#fff}.scan-status{display:flex;gap:10px;align-items:flex-start;margin-top:10px}.scan-status b{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#d1e9ff;color:#175cd3;flex:none}.scan-status strong,.scan-status span{display:block}.scan-status span{font-size:11px;color:#667085;margin-top:2px}.manual-fields.collapsed{display:none}.review-banner{background:#fffaeb;border:1px solid #fedf89;border-radius:14px;padding:12px;margin:10px 0;color:#93370d;font-size:12px;line-height:1.45}.pay-scale-box{background:#eff8ff;border:1px solid #b2ddff;border-radius:16px;padding:14px;margin:12px 0}.pay-scale-box small,.pay-scale-box strong,.pay-scale-box span{display:block}.pay-scale-box small{color:#175cd3;font-weight:800}.pay-scale-box strong{font-size:24px;margin:4px 0}.pay-scale-box span{color:#667085;font-size:11px}.salary-lock{background:#f8fafc!important}.source-note{font-size:10px;color:#667085;margin-top:8px}@media(max-width:520px){.payslip-choice{grid-template-columns:1fr 1fr}.payslip-choice label:first-child{grid-column:1/-1}}
 
 /* v9.10 smart payslip scan */
-/* v9.10.2 scan review states */
+/* v9.10.3 scan review states */
 .scan-field-state{display:block;margin-top:6px;font-size:12px;font-weight:800}.scan-field-state.found{color:#067647}.scan-field-state.check{color:#b54708}.scan-field-state.missing{color:#667085}
 
 .scan-progress{display:none;margin:12px 0;padding:14px;border-radius:16px;background:#f8fafc;border:1px solid #e4e7ec}.scan-progress.on{display:block}.scan-progress-bar{height:8px;background:#eaecf0;border-radius:999px;overflow:hidden;margin-top:9px}.scan-progress-bar span{display:block;height:100%;width:0;background:#1570ef;transition:width .2s}.scan-found{margin-top:10px;font-size:12px;color:#475467}.scan-found strong{color:#101828}.scan-warning{font-size:11px;color:#93370d;margin-top:7px}
@@ -103,7 +103,7 @@
 </style><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.2 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.2 · Smart Payslip Review</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3 · Smart Payslip Review</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -368,23 +368,39 @@ function resetScanReview(){
 }
 function markScanField(id,state){let st=document.getElementById(id+'State');if(!st)return;if(state==='found'){st.textContent='Found ✓ — check against payslip';st.className='scan-field-state found'}else if(state==='check'){st.textContent='Needs checking';st.className='scan-field-state check'}else{st.textContent='Not found — enter manually';st.className='scan-field-state missing'}}
 async function handlePayslipPhoto(file){if(!file)return;resetScanReview();let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
-function moneyCandidates(text,labelPatterns){for(const pat of labelPatterns){let m=text.match(pat);if(m){let v=parseFloat(String(m[1]).replace(/,/g,''));if(Number.isFinite(v))return v}}return null}
-function setScanField(id,val){if(val!==null&&val!==undefined&&Number.isFinite(val)){document.getElementById(id).value=val.toFixed(2);markScanField(id,'found');return true}markScanField(id,'missing');return false}
-function extractPayslipText(text){let t=text.replace(/[£]/g,'£').replace(/\r/g,'\n').replace(/[ ]{2,}/g,' ');let found={};
- found.gross=moneyCandidates(t,[/(?:gross\s*pay|total\s*gross|gross)[^\d£]{0,35}£?\s*([\d,]+\.\d{2})/i]);
- found.net=moneyCandidates(t,[/(?:net\s*pay|net\s*payment|net)[^\d£]{0,35}£?\s*([\d,]+\.\d{2})/i]);
- found.tax=moneyCandidates(t,[/(?:income\s*tax|paye|tax)[^\d£]{0,35}£?\s*([\d,]+\.\d{2})/i]);
- found.ni=moneyCandidates(t,[/(?:national\s*insurance|\bni\b)[^\d£]{0,35}£?\s*([\d,]+\.\d{2})/i]);
- found.pen=moneyCandidates(t,[/(?:nhs\s*pension|pension)[^\d£]{0,35}£?\s*([\d,]+\.\d{2})/i]);
- found.basic=moneyCandidates(t,[/(?:basic\s*pay|basic)[^\d£]{0,55}£?\s*([\d,]+\.\d{2})/i]);
- found.us=moneyCandidates(t,[/(?:basic\s*unsoc|unsocial)[^\d£]{0,70}£?\s*([\d,]+\.\d{2})/i]);
- found.sunday=moneyCandidates(t,[/(?:sunday\s*hours|sunday)[^\d£]{0,70}£?\s*([\d,]+\.\d{2})/i]);
- found.ot=moneyCandidates(t,[/(?:ot\s*t1\/?2|overtime)[^\d£]{0,70}£?\s*([\d,]+\.\d{2})/i]);
+function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
+function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
+function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}
+function rowUnits(line){let n=rowNumbers(line);if(n.length<2)return null;let v=n[0].value;return v>=0&&v<=400?v:null}
+function sane(field,v){if(v===null||v===undefined)return null;let ranges={basic:[500,10000],us:[0,3000],sunday:[0,3000],ot:[0,6000],gross:[500,20000],tax:[0,8000],ni:[0,4000],pen:[0,4000],net:[100,15000]};let r=ranges[field];return !r||(v>=r[0]&&v<=r[1])?v:null}
+function bestRow(lines,tests,{exclude=[],field=null}={}){for(const line of lines){let low=line.toLowerCase();if(exclude.some(x=>low.includes(x)))continue;if(tests.some(re=>re.test(low))){let v=rowAmount(line);v=field?sane(field,v):v;if(v!==null)return {line,value:v}}}return null}
+function extractPayslipText(text){
+ let lines=String(text||'').replace(/\r/g,'\n').split(/\n+/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
+ let found={basic:null,us:null,sunday:null,ot:null,gross:null,tax:null,ni:null,pen:null,net:null};
+ // NHS payroll rows are normally Description | Units | Rate | Amount. For earning rows, the LAST numeric value on the labelled row is the amount.
+ let specs={
+  basic:{tests:[/\bbasic\s*pay\b/,/^basic\b/],exclude:['total','salary','wte'],field:'basic'},
+  us:{tests:[/basic\s*unsoc/,/unsocial/],exclude:['total','sunday','public'],field:'us'},
+  sunday:{tests:[/sunday\s*hours/,/^sunday\b/],exclude:['total'],field:'sunday'},
+  ot:{tests:[/ot\s*t\s*1\s*\/?\s*2/,/overtime/],exclude:['total'],field:'ot'},
+  gross:{tests:[/total\s*payments/,/gross\s*pay/,/total\s*gross/],exclude:[],field:'gross'},
+  tax:{tests:[/income\s*tax/,/\bpaye\b/],exclude:['tax code'],field:'tax'},
+  ni:{tests:[/national\s*insurance/,/\bni\s*(?:contrib|deduct|£|\d)/],exclude:['category','number'],field:'ni'},
+  pen:{tests:[/nhs\s*pension/,/pension/],exclude:['rate','scheme'],field:'pen'},
+  net:{tests:[/net\s*pay/,/net\s*payment/],exclude:[],field:'net'}
+ };
+ let matched={};
+ for(const [k,sp] of Object.entries(specs)){let r=bestRow(lines,sp.tests,sp);if(r){found[k]=r.value;matched[k]=r.line}}
+ // Cross-checks: reject values that contradict payroll arithmetic rather than confidently attaching a nearby number to the wrong label.
+ if(found.basic!==null && found.gross!==null && found.basic>found.gross)found.basic=null;
+ if(found.net!==null && found.gross!==null && found.net>found.gross*1.02)found.net=null;
+ for(const k of ['tax','ni','pen'])if(found[k]!==null&&found.gross!==null&&found[k]>found.gross)found[k]=null;
  Object.entries(scanFieldMap).forEach(([k,id])=>setScanField(id,found[k]));
- // Unit fields are deliberately not inferred from money amounts.
- ['aUSUnits','aSundayUnits','aOTUnits'].forEach(id=>markScanField(id,'missing'));
- return found}
-
+ // Units only come from the same labelled earnings row, never from a nearby money value.
+ let unitSpecs=[['aUSUnits','us'],['aSundayUnits','sunday'],['aOTUnits','ot']];
+ for(const [id,k] of unitSpecs){let line=matched[k],u=line?rowUnits(line):null;if(u!==null&&u<=250){document.getElementById(id).value=String(u);markScanField(id,'found')}else markScanField(id,'missing')}
+ return found
+}
 async function loadScanImage(file){return await new Promise((resolve,reject)=>{let im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=URL.createObjectURL(file)})}
 function cropPaperCanvas(img){let max=1800,scale=Math.min(1,max/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height)),w=Math.round((img.naturalWidth||img.width)*scale),h=Math.round((img.naturalHeight||img.height)*scale),c=document.createElement('canvas');c.width=w;c.height=h;let x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,w,h);let d=x.getImageData(0,0,w,h),step=Math.max(2,Math.floor(Math.min(w,h)/350)),minX=w,minY=h,maxX=0,maxY=0,n=0;for(let yy=0;yy<h;yy+=step)for(let xx=0;xx<w;xx+=step){let i=(yy*w+xx)*4,r=d.data[i],g=d.data[i+1],b=d.data[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b);if((r+g+b)/3>118 && mx-mn<70){minX=Math.min(minX,xx);maxX=Math.max(maxX,xx);minY=Math.min(minY,yy);maxY=Math.max(maxY,yy);n++}}if(!n||maxX-minX<w*.25||maxY-minY<h*.25)return c;let pad=18,minx=Math.max(0,minX-pad),miny=Math.max(0,minY-pad),cw=Math.min(w-minx,maxX-minX+pad*2),ch=Math.min(h-miny,maxY-minY+pad*2),o=document.createElement('canvas');o.width=cw;o.height=ch;o.getContext('2d').drawImage(c,minx,miny,cw,ch,0,0,cw,ch);return o}
 function rotateCanvas(src,deg,maxSide=1500){let swap=Math.abs(deg)%180===90,sw=src.width,sh=src.height,baseW=swap?sh:sw,baseH=swap?sw:sh,scale=Math.min(1,maxSide/Math.max(baseW,baseH)),w=Math.round(baseW*scale),h=Math.round(baseH*scale),c=document.createElement('canvas');c.width=w;c.height=h;let x=c.getContext('2d');x.save();x.translate(w/2,h/2);x.rotate(deg*Math.PI/180);let dw=Math.round(sw*scale),dh=Math.round(sh*scale);x.drawImage(src,-dw/2,-dh/2,dw,dh);x.restore();return c}
