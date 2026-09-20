@@ -1,5 +1,3 @@
-Shift Pay HQ v9.10.3c DEV
+Shift Pay HQ v9.10.3e WORKER INIT FIX DEV
 
-Stable v9.10.3b UI baseline plus one isolated change: OCR engine loading with a primary CDN and one backup source. No pay-engine, rota, row-mapping, or UI navigation changes.
-
-Test order: confirm Rota/Pay/Payslips/Settings, then choose the same payslip photo and verify the scanner reaches OCR loaded.
+Stable v9.10.3c UI baseline. OCR change only: uses the documented Tesseract.js v5 createWorker API with explicit workerPath, corePath and local English traineddata. Scanner errors are surfaced in-app. No payroll rules changed.
