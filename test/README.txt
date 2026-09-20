@@ -1,3 +1,3 @@
-Shift Pay HQ v9.10 DEV — Smart Payslip Scan
+Shift Pay HQ v9.10.1 DEV — Scan Review Fix
 
-Adds on-device/browser payslip photo text extraction with review-before-save. No extracted figure is saved until the user confirms it. Manual entry remains available. The four-tab simplified layout and development evidence tools remain intact.
+Fixes payslip scan review state so every new photo starts with clean review fields. Scanner-populated fields are marked “Found ✓ — check against payslip”; fields not extracted are marked “Not found — enter manually”. The result message consistently says “Photo read — please review”. No extracted figure is saved until the user confirms it.
