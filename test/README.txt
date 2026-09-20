@@ -1,3 +1,7 @@
-Shift Pay HQ v9.10.3e WORKER INIT FIX DEV
+Shift Pay HQ v9.10.3f SCANNER ROUTE + CACHE FIX DEV
 
-Stable v9.10.3c UI baseline. OCR change only: uses the documented Tesseract.js v5 createWorker API with explicit workerPath, corePath and local English traineddata. Scanner errors are surfaced in-app. No payroll rules changed.
+Purpose: prove the current photo handler is executing and force browsers off the stale v9.10.3c service-worker cache.
+
+Expected first scanner status: Scanner v2 started ✓
+Then OCR worker diagnostics from v9.10.3e.
+No payroll rules changed.
