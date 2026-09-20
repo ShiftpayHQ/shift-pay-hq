@@ -1,4 +1,4 @@
-Shift Pay HQ v9.10.3g DEV
+Shift Pay HQ v9.10.3h DEV
 
 Scanner execution fix built from the confirmed-working v9.10.3f route/cache build.
 
