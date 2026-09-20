@@ -1,3 +1,3 @@
-Shift Pay HQ v9.10.3 DEV — NHS payslip row-aware scanner mapping
+Shift Pay HQ v9.10.4 DEV — Scanner Reliability Fix
 
-Maps labelled payroll rows using Description / Units / Rate / Amount structure, uses the final numeric value on an earnings row as Amount, extracts units only from the same row, and rejects contradictory mappings rather than guessing.
+Keeps the v9.10.3 row-aware NHS payslip mapping, fixes the PWA cache version, loads the OCR library on demand with a fallback CDN, retries a failed OCR pass once, and shows scanner stages: loading, OCR loaded, rotation checks, detailed reading, and payroll-row matching. No uncertain payroll figure is saved automatically.
