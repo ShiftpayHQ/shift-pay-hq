@@ -1,3 +1,4 @@
-Shift Pay HQ v9.8.6 DEV
-Simple Payslip + NHS Scotland Band 2–7 Autofill
-Photo-first payslip review flow; manual entry retained; official 2026/27 AfC salary lookup; Known Truth Lab preserved.
+Shift Pay HQ v9.9 DEV
+Simplification milestone
+Main navigation: Rota · Pay · Payslips · Settings
+Advanced ECF, payroll calendar, OT planner and Known Truth tooling preserved underneath.
