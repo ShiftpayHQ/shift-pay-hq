@@ -1,4 +1,1 @@
-Shift Pay HQ v9.9 DEV
-Simplification milestone
-Main navigation: Rota · Pay · Payslips · Settings
-Advanced ECF, payroll calendar, OT planner and Known Truth tooling preserved underneath.
+Shift Pay HQ v9.9.1 DEV — Simplification Polish
