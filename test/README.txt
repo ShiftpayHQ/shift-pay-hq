@@ -1,9 +1,6 @@
-Shift Pay HQ v9.10.3h DEV
+Shift Pay HQ v9.10.3i DEV — NHS Row Mapper
 
-Scanner execution fix built from the confirmed-working v9.10.3f route/cache build.
-
-Fix: restores the missing setScanField helper used by OCR payroll-row mapping. This was the exact runtime error exposed by v9.10.3f: setScanField is not defined.
-
-No payroll rules, rota logic, navigation, or pay calculations were changed.
-
-Test: confirm Rota / Pay / Payslips / Settings, then scan the same payslip and watch the OCR stage/result.
+Accuracy build based on the working v9.10.3h Smart Payslip Vision scanner.
+Earnings rows are only auto-filled as validated when OCR finds a plausible Description / Units / Rate / Amount combination where Units × Rate matches Amount within tolerance.
+Totals and deductions are deliberately marked Needs checking unless manually reviewed.
+No payroll rules, rota logic or pay calculations were changed.
