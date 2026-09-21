@@ -1,7 +1,1 @@
-Shift Pay HQ v9.10.3k COORDINATE ROW MAPPER DEV
-
-Built from the working v9.10.3j photo/OCR pipeline.
-Adds coordinate-aware OCR row reconstruction after recognition.
-Earnings are only marked green when label proximity, left-to-right Units / Rate / Amount geometry, and Units × Rate ≈ Amount agree.
-Totals and deductions remain review-required.
-No rota or payroll rules changed.
+Shift Pay HQ v9.10.3l OCR COORDINATE DEBUG DEV\n\nBuilt from v9.10.3k. Adds a temporary developer-only OCR debug panel after each scan.\nIt exposes reconstructed OCR rows, X/Y coordinates, detected numbers and raw OCR text so NHS payslip mapping can be fixed from observed OCR output rather than guesses.\nNo payroll rules, rota logic, photo selection, OCR preprocessing, or save logic changed.\n
