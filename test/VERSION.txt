@@ -1,2 +1,2 @@
-Shift Pay HQ v9.10.3x DEV
-NHS Earnings Table Model
+Shift Pay HQ v9.10.3y DEV
+Earnings Component Resolver

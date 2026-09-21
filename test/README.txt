@@ -1,9 +1,7 @@
-Shift Pay HQ v9.10.3x DEV
+Shift Pay HQ v9.10.3y DEV
 
-NHS Earnings Table Model
+Earnings Component Resolver
 
-Built from the working v9.10.3w scanner. This build models OCR earnings as structured rows: Description / Hours / Pay quantity / Rate / Amount. Hours and pay quantity remain separate, and multiple overtime rows are preserved instead of being silently combined.
+Built from v9.10.3x. OCR and the NHS earnings table model are preserved. 3y adds a downstream resolver that keeps Hours, Pay quantity, Rate and Amount separate, resolves only unique arithmetically validated labelled rows, and preserves multiple overtime rows rather than silently collapsing them.
 
-The existing review fields and Pay Check are deliberately unchanged while the structured row model is validated. The NHS Earnings Table Model is diagnostic-only and nothing is saved until the user confirms the payslip.
-
-No benchmark payroll amounts are hard-coded. Unresolved rows remain unresolved. No rota, pay-engine, payroll-calendar or navigation changes.
+No benchmark payroll amounts are hard-coded. Ambiguous components remain review-only. Existing rota/payroll calendar/navigation are unchanged.
