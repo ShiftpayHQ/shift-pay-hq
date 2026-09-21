@@ -103,7 +103,7 @@
 </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3p DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3p · Earnings Mapper Runtime Fix</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3q DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3p · Earnings Mapper Runtime Fix</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -368,7 +368,7 @@ function resetScanReview(){
 }
 function markScanField(id,state){let st=document.getElementById(id+'State');if(!st)return;if(state==='found'){st.textContent='Found ✓ — check against payslip';st.className='scan-field-state found'}else if(state==='check'){st.textContent='Needs checking';st.className='scan-field-state check'}else{st.textContent='Not found — enter manually';st.className='scan-field-state missing'}}
 function setScanField(id,value){let el=document.getElementById(id);if(!el)return;let n=(value===null||value===undefined||value==='')?null:Number(value);if(n!==null&&Number.isFinite(n)&&n>=0){el.value=n.toFixed(2);markScanField(id,'found')}else{el.value='';markScanField(id,'missing')}}
-async function handlePayslipPhoto(file){if(!file)return;resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3p earnings-column mapper started. Cropping, rotating and enhancing the payslip…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
+async function handlePayslipPhoto(file){if(!file)return;resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3q row-identity mapper started. Cropping, rotating and enhancing the payslip…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
 function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
 function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
 function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}
@@ -447,15 +447,32 @@ function kindFromSpatialRow(row){let low=fuzzyLabel(row.text);
 }
 function nhsEarningsTableRows(words){
  let rows=spatialRows(words),anchor=tableAnchor(rows),best={};if(!anchor)return best;let geo=earningsGeometry(rows,anchor);
+ // Learn the payroll base hourly rate from the BASIC PAY row where possible.
+ // This is document-derived, never a hard-coded salary/rate.
+ let basicRow=rows.find(r=>kindFromSpatialRow(r)==='basic'),baseRate=null;
+ if(basicRow){let nums=spatialRowNumbers(basicRow).filter(n=>n.value>5&&n.value<100&&n.x<anchor.x-40);if(nums.length){nums.sort((a,b)=>b.x-a.x);baseRate=nums[0].value}}
  for(const row of rows){let kind=kindFromSpatialRow(row);if(!kind)continue;let amount=nearestNumber(row,geo.amountX,kind==='basic'?[500,10000]:[.01,6000],150);if(!amount)continue;
-  if(kind==='basic'){best.basic={amount:amount.value,units:null,rate:null,score:500-Math.abs(amount.x-geo.amountX),line:row.text,amountX:amount.x};continue}
-  let units=nearestNumber(row,geo.unitX,[.01,400],150);if(!units)continue;
-  // Optional rate/arithmetic validation: use it when OCR captured a plausible rate between Units and Amount.
-  // If OCR missed the tiny rate, same-row + learned-column geometry can still safely identify Units and Amount.
-  let between=spatialRowNumbers(row).filter(n=>n.x>units.x+45&&n.x<amount.x-45&&n.value>.01&&n.value<200),rate=null,arith=false;
-  for(const r of between){if(approxMoney(units.value,r.value,amount.value)){rate=r;arith=true;break}}
-  let score=420-Math.abs(amount.x-geo.amountX)-Math.abs(units.x-geo.unitX)+(arith?80:0);
-  if(!best[kind]||score>best[kind].score)best[kind]={amount:amount.value,units:units.value,rate:rate?.value??null,arith,score,line:row.text,amountX:amount.x,unitsX:units.x};
+  if(kind==='basic'){best.basic={amount:amount.value,units:null,rate:baseRate,score:600-Math.abs(amount.x-geo.amountX),line:row.text,amountX:amount.x};continue}
+  let nums=spatialRowNumbers(row),candidates=[];
+  // Candidate units must be left of Amount. Test each rather than blindly taking the nearest number.
+  for(const u of nums.filter(n=>n.x<amount.x-80&&n.value>0&&n.value<=400)){
+   let between=nums.filter(n=>n.x>u.x+35&&n.x<amount.x-35&&n.value>.01&&n.value<200),rate=null,arith=false;
+   for(const r of between){if(approxMoney(u.value,r.value,amount.value)){rate=r;arith=true;break}}
+   let identity=false,derivedRate=null;
+   if(baseRate){
+    if(kind==='us')derivedRate=baseRate*.30;
+    if(kind==='sunday')derivedRate=baseRate*.60;
+    if(kind==='ot')derivedRate=baseRate*1.50;
+    if(derivedRate && Math.abs(u.value*derivedRate-amount.value)<=Math.max(.08,amount.value*.008))identity=true;
+   }
+   // For Sunday/OT require payroll identity arithmetic, not mere coordinate proximity.
+   // Mon-Sat retains the already-proven geometry path, but gains the same identity bonus.
+   if((kind==='sunday'||kind==='ot')&&!identity&&!arith)continue;
+   let score=420-Math.abs(amount.x-geo.amountX)-Math.abs(u.x-geo.unitX)+(arith?70:0)+(identity?180:0);
+   candidates.push({u,rate,arith,identity,derivedRate,score});
+  }
+  if(!candidates.length)continue;candidates.sort((a,b)=>b.score-a.score);let c=candidates[0];
+  if(!best[kind]||c.score>best[kind].score)best[kind]={amount:amount.value,units:c.u.value,rate:c.rate?.value??c.derivedRate??null,arith:c.arith,identity:c.identity,score:c.score,line:row.text,amountX:amount.x,unitsX:c.u.x};
  }
  return best;
 }
@@ -479,7 +496,7 @@ async function ensureOCRWorker(){await ensureOCR();if(scanWorker)return scanWork
 async function quickOCR(canvas,label){let worker=await ensureOCRWorker();let r=await worker.recognize(canvas,{}, {text:true});scanProgressTitle.textContent='Checked '+label+' ✓';return (r&&r.data&&r.data.text)||'';}
 async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBar.style.width='5%';scanProgressTitle.textContent='Preparing payslip…';scanFound.innerHTML='Finding the document and preparing it for OCR.';try{let worker=await ensureOCRWorker();await worker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});scanProgressBar.style.width='12%';let img=await loadScanImage(file),paper=cropPaperCanvas(img),angles=[0,90,180,270],best={score:-1,angle:0,text:''};for(let i=0;i<angles.length;i++){let a=angles[i],base=rotateCanvas(paper,a,1500),small=enhanceCanvas(base,1900,false);scanProgressTitle.textContent='Checking orientation '+(i+1)+' of 4…';let txt=await quickOCR(small,(i+1)+' of 4 orientations'),score=ocrScore(txt);scanProgressBar.style.width=(12+(i+1)*12)+'%';if(score>best.score)best={score,angle:a,text:txt}}scanProgressTitle.textContent='Enhancing payroll text…';let upright=rotateCanvas(paper,best.angle,2400),normal=enhanceCanvas(upright,3400,false),binary=enhanceCanvas(upright,3400,true);scanFound.innerHTML='OCR loaded ✓ · document cropped ✓ · best orientation '+best.angle+'° ✓ · enhancing text…';let r1=await worker.recognize(normal,{}, {text:true,blocks:true}),t1=(r1&&r1.data&&r1.data.text)||'';scanProgressBar.style.width='72%';let r2=await worker.recognize(binary,{}, {text:true,blocks:true}),t2=(r2&&r2.data&&r2.data.text)||'';let primary=ocrScore(t2)>ocrScore(t1)?r2:r1,text=(primary&&primary.data&&primary.data.text)||'';
  // A second pass over the lower 72% helps tiny earnings/deduction rows without trusting either pass alone.
- let detail=cropRegion(ocrScore(t2)>ocrScore(t1)?binary:normal,0,.25,1,1);scanProgressTitle.textContent='Reading NHS payroll rows…';let r3=await worker.recognize(detail,{}, {text:true,blocks:true}),t3=(r3&&r3.data&&r3.data.text)||'';if(ocrScore(t3)>8)text+='\n'+t3;let found=extractPayslipText(text),spatialWords=collectOcrWords(primary&&primary.data),spatial=applySpatialEarnings(spatialWords,found),hits=Object.entries(found).filter(([k,v])=>v!==null&&v!==undefined);scanProgressBar.style.width='100%';scanProgressTitle.textContent='Photo read — please review';if(hits.length){scanFound.innerHTML='<strong>'+hits.length+' possible figures found:</strong> '+hits.map(([k])=>scanLabels[k]).join(', ')+'.<div class="scan-warning">Cropped, rotated and enhanced locally. Green earnings rows use learned NHS earnings columns anchored from Basic Pay; arithmetic is used when OCR captures the rate. Amber totals still need checking against the payslip.</div>';scanTitle.textContent='Photo read — review the figures'}else{scanFound.innerHTML='<strong>OCR completed, but no payroll values passed the safety checks.</strong><div class="scan-warning">The image was cropped, rotated and enhanced. Nothing has been guessed; a closer/clearer photo may be needed.</div>';scanTitle.textContent='Photo read — manual entry needed'}scanFound.insertAdjacentHTML('beforeend',ocrDebugHtml(spatialWords,text));scanCopy.textContent='Nothing is saved until you tap Confirm payslip & run Pay Check.'}catch(e){console.error(e);scanProgressTitle.textContent='OCR failed';scanProgressBar.style.width='0';let msg=(e&&e.message)?e.message:String(e);scanFound.innerHTML='<strong>Scanner diagnostic:</strong> '+String(msg).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))+'<div class="scan-warning">No payroll figures have been guessed.</div>';scanTitle.textContent='Photo added — review manually';scanCopy.textContent='Automatic reading stopped before payroll matching. The error above identifies the failing OCR layer.';}}
+ let detail=cropRegion(ocrScore(t2)>ocrScore(t1)?binary:normal,0,.25,1,1);scanProgressTitle.textContent='Reading NHS payroll rows…';let r3=await worker.recognize(detail,{}, {text:true,blocks:true}),t3=(r3&&r3.data&&r3.data.text)||'';if(ocrScore(t3)>8)text+='\n'+t3;let found=extractPayslipText(text),spatialWords=collectOcrWords(primary&&primary.data),spatial=applySpatialEarnings(spatialWords,found),hits=Object.entries(found).filter(([k,v])=>v!==null&&v!==undefined);scanProgressBar.style.width='100%';scanProgressTitle.textContent='Photo read — please review';if(hits.length){scanFound.innerHTML='<strong>'+hits.length+' possible figures found:</strong> '+hits.map(([k])=>scanLabels[k]).join(', ')+'.<div class="scan-warning">Cropped, rotated and enhanced locally. Green earnings rows use learned NHS earnings columns anchored from Basic Pay; Sunday and OT now require row-identity arithmetic before they are accepted. Amber totals still need checking against the payslip.</div>';scanTitle.textContent='Photo read — review the figures'}else{scanFound.innerHTML='<strong>OCR completed, but no payroll values passed the safety checks.</strong><div class="scan-warning">The image was cropped, rotated and enhanced. Nothing has been guessed; a closer/clearer photo may be needed.</div>';scanTitle.textContent='Photo read — manual entry needed'}scanFound.insertAdjacentHTML('beforeend',ocrDebugHtml(spatialWords,text));scanCopy.textContent='Nothing is saved until you tap Confirm payslip & run Pay Check.'}catch(e){console.error(e);scanProgressTitle.textContent='OCR failed';scanProgressBar.style.width='0';let msg=(e&&e.message)?e.message:String(e);scanFound.innerHTML='<strong>Scanner diagnostic:</strong> '+String(msg).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))+'<div class="scan-warning">No payroll figures have been guessed.</div>';scanTitle.textContent='Photo added — review manually';scanCopy.textContent='Automatic reading stopped before payroll matching. The error above identifies the failing OCR layer.';}}
 
 
 

@@ -1,13 +1,7 @@
-Shift Pay HQ v9.10.3p DEV
+Shift Pay HQ v9.10.3q DEV
 
-Earnings Column Mapper
+Row Identity Mapper
 
-Built from v9.10.3n. Learns the earnings Amount column from Basic Pay and derives the Units column from same-row geometry. Uses Units x Rate ≈ Amount when the tiny rate is captured, but does not require a rate when OCR misses it.
+Built from the working v9.10.3p scanner. Basic Pay and Mon-Sat mapping are preserved. Sunday and OT candidates now require arithmetic identity validation using the base hourly rate learned from the payslip itself, or an explicit Units x Rate = Amount relationship on the OCR row.
 
-No known payroll amounts are hard-coded. Uncertain fields remain blank. No pay-engine, rota, payroll-calendar or navigation changes.
-
-Test with the same sideways payslip. Review fields before confirming.
-
-Runtime fix: corrected undefined variable in earningsGeometry column-learning comparator.
-New scans clear all prior OCR review values before OCR starts.
-No payroll rules or rota logic changed.
+No benchmark payroll amounts are hard-coded. Uncertain fields remain blank. PAYE/Net remain review-only. No pay-engine, rota, payroll-calendar or navigation changes.
