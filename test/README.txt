@@ -1,7 +1,9 @@
-Shift Pay HQ v9.10.3n DEV
+Shift Pay HQ v9.10.3o DEV
 
-NHS Earnings Table Mapper.
+Earnings Column Mapper
 
-Builds from v9.10.3m and uses BASIC PAY to locate the earnings amount column, then maps Basic/Unsocial/Sunday/OT only from values in that same physical amount column. Units must appear to the left on the same OCR row.
+Built from v9.10.3n. Learns the earnings Amount column from Basic Pay and derives the Units column from same-row geometry. Uses Units x Rate ≈ Amount when the tiny rate is captured, but does not require a rate when OCR misses it.
 
-No pay-engine, rota, payroll-calendar or navigation changes. Review remains mandatory before save.
+No known payroll amounts are hard-coded. Uncertain fields remain blank. No pay-engine, rota, payroll-calendar or navigation changes.
+
+Test with the same sideways payslip. Review fields before confirming.
