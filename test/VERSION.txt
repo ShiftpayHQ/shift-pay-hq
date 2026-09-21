@@ -1,1 +1,2 @@
-Shift Pay HQ v9.10.3j DEV
+Shift Pay HQ v9.10.3k DEV
+Coordinate-aware NHS row reconstruction built on v9.10.3j.
