@@ -103,7 +103,7 @@
 </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3o DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3o · Earnings Column Mapper</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3p DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3p · Earnings Mapper Runtime Fix</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -368,7 +368,7 @@ function resetScanReview(){
 }
 function markScanField(id,state){let st=document.getElementById(id+'State');if(!st)return;if(state==='found'){st.textContent='Found ✓ — check against payslip';st.className='scan-field-state found'}else if(state==='check'){st.textContent='Needs checking';st.className='scan-field-state check'}else{st.textContent='Not found — enter manually';st.className='scan-field-state missing'}}
 function setScanField(id,value){let el=document.getElementById(id);if(!el)return;let n=(value===null||value===undefined||value==='')?null:Number(value);if(n!==null&&Number.isFinite(n)&&n>=0){el.value=n.toFixed(2);markScanField(id,'found')}else{el.value='';markScanField(id,'missing')}}
-async function handlePayslipPhoto(file){if(!file)return;resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3o earnings-column mapper started. Cropping, rotating and enhancing the payslip…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
+async function handlePayslipPhoto(file){if(!file)return;resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3p earnings-column mapper started. Cropping, rotating and enhancing the payslip…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
 function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
 function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
 function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}
@@ -434,7 +434,7 @@ function earningsGeometry(rows,anchor){
  // Learn columns from the document itself. In the test payslip the amount column is anchored by BASIC;
  // units sit roughly one earnings-column to its left. No payroll amount is hard-coded.
  let unitOffsets=[];
- for(const row of rows){let low=fuzzyLabel(row.text);if(!/(unsoc|sunday|hours|overtime|\bot\b|t1)/.test(low))continue;let amount=amountNearColumn(row,anchor.x,[.01,6000]);if(!amount)continue;let left=spatialRowNumbers(row).filter(n=>n.x<amount.x-120&&n.value>0&&n.value<=400);if(left.length){left.sort((a,b)=>Math.abs((amount.x-n.x)-370)-Math.abs((amount.x-a.x)-370));let u=left[0];let off=amount.x-u.x;if(off>=220&&off<=520)unitOffsets.push(off)}}
+ for(const row of rows){let low=fuzzyLabel(row.text);if(!/(unsoc|sunday|hours|overtime|\bot\b|t1)/.test(low))continue;let amount=amountNearColumn(row,anchor.x,[.01,6000]);if(!amount)continue;let left=spatialRowNumbers(row).filter(n=>n.x<amount.x-120&&n.value>0&&n.value<=400);if(left.length){left.sort((a,b)=>Math.abs((amount.x-a.x)-370)-Math.abs((amount.x-b.x)-370));let u=left[0];let off=amount.x-u.x;if(off>=220&&off<=520)unitOffsets.push(off)}}
  let unitOffset=unitOffsets.length?unitOffsets.sort((a,b)=>a-b)[Math.floor(unitOffsets.length/2)]:375;
  return {amountX:anchor.x,unitX:anchor.x-unitOffset,unitOffset};
 }

@@ -1,2 +1,1 @@
-Shift Pay HQ v9.10.3o DEV
-Earnings Column Mapper
+Shift Pay HQ v9.10.3p DEV
