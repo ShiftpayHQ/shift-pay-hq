@@ -1,11 +1,7 @@
-Shift Pay HQ v9.10.3m DEV
+Shift Pay HQ v9.10.3n DEV
 
-Column-aware payslip mapper built from v9.10.3l OCR coordinate diagnostics.
+NHS Earnings Table Mapper.
 
-Changes:
-- splits reconstructed OCR rows into spatial column segments before payroll mapping
-- Basic Pay can map from a labelled Basic Pay segment when the amount is clearly recognised
-- unsocial, Sunday and overtime only turn green when Description + Units + Rate + Amount occur in the same spatial segment and Units × Rate ≈ Amount
-- clears unsafe legacy earnings candidates before applying column-aware results
-- retains Developer OCR debug for validation
-- no pay-engine, rota, payroll-calendar or navigation changes
+Builds from v9.10.3m and uses BASIC PAY to locate the earnings amount column, then maps Basic/Unsocial/Sunday/OT only from values in that same physical amount column. Units must appear to the left on the same OCR row.
+
+No pay-engine, rota, payroll-calendar or navigation changes. Review remains mandatory before save.
