@@ -1,15 +1,15 @@
-Shift Pay HQ v9.10.3r DEV
+Shift Pay HQ v9.10.3s DEV
 
-DEV Cache Reliability Fix
+Sunday + OT Row Lock
 
-Built directly from v9.10.3q Row Identity Mapper. Scanner, rota, pay, payroll calendar and navigation logic are preserved.
+Built from v9.10.3r. Keeps the DEV cache reliability fix intact.
 
-DEV /test reliability changes:
-- /test no longer registers a service worker.
-- any existing /test service-worker registrations are unregistered on load.
-- old Shift Pay HQ Cache Storage entries are cleared on load.
-- sw.js is a network-only cleanup worker for any browser that still checks the old registration.
-- index.html is never cached by the worker.
-- badge and header both identify v9.10.3r.
+Scanner changes only:
+- Locks Sunday and OT candidates to their labelled OCR row.
+- Separates displayed hours from effective pay quantity when NHS payroll prints both.
+- Validates amount arithmetic using the document-derived base hourly rate.
+- Preserves Basic and Mon-Sat mapping.
+- No benchmark payroll amounts are hard-coded.
+- Uncertain fields remain blank.
 
-This intentionally sacrifices offline PWA caching only in the DEV /test route so each scanner build can be tested reliably. The live root PWA is untouched.
+No pay-engine, rota, payroll-calendar or navigation changes.

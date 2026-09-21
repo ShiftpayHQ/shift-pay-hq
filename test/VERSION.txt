@@ -1,1 +1,2 @@
-Shift Pay HQ v9.10.3r DEV
+Shift Pay HQ v9.10.3s DEV
+Sunday + OT Row Lock
