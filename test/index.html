@@ -103,7 +103,7 @@
 </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3q DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3p · Earnings Mapper Runtime Fix</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3r DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3r · DEV Cache Reliability Fix</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -368,7 +368,7 @@ function resetScanReview(){
 }
 function markScanField(id,state){let st=document.getElementById(id+'State');if(!st)return;if(state==='found'){st.textContent='Found ✓ — check against payslip';st.className='scan-field-state found'}else if(state==='check'){st.textContent='Needs checking';st.className='scan-field-state check'}else{st.textContent='Not found — enter manually';st.className='scan-field-state missing'}}
 function setScanField(id,value){let el=document.getElementById(id);if(!el)return;let n=(value===null||value===undefined||value==='')?null:Number(value);if(n!==null&&Number.isFinite(n)&&n>=0){el.value=n.toFixed(2);markScanField(id,'found')}else{el.value='';markScanField(id,'missing')}}
-async function handlePayslipPhoto(file){if(!file)return;resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3q row-identity mapper started. Cropping, rotating and enhancing the payslip…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
+async function handlePayslipPhoto(file){if(!file)return;resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3r row-identity mapper started. Cropping, rotating and enhancing the payslip…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
 function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
 function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
 function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}
@@ -572,7 +572,20 @@ function importBackup(file){
  r.onload=()=>{try{const p=JSON.parse(r.result);if(!p.data)throw 0;Object.entries(p.data).forEach(([k,v])=>localStorage.setItem(k,v));alert("Backup restored. Shift Pay HQ will reload.");location.reload()}catch(e){alert("That backup file could not be read.")}};
  r.readAsText(file);
 }
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",async()=>{
+  // DEV /test builds must never be pinned behind an old app-shell service worker.
+  if(location.pathname.includes("/test/")){
+    try{
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.filter(r=>{try{return new URL(r.scope).pathname.includes("/test/")}catch(_){return false}}).map(r=>r.unregister()));
+      const keys=await caches.keys();
+      await Promise.all(keys.filter(k=>k.startsWith("shift-pay-hq-")).map(k=>caches.delete(k)));
+      console.info("Shift Pay HQ DEV: service workers unregistered and app caches cleared");
+    }catch(err){console.warn("Shift Pay HQ DEV cache cleanup failed",err)}
+    return;
+  }
+  navigator.serviceWorker.register("./sw.js").catch(()=>{});
+});}
 window.addEventListener("DOMContentLoaded",()=>{
  const standalone=window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone===true;
  if(standalone && document.getElementById("installCard")) document.getElementById("installCard").style.display="none";

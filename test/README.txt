@@ -1,7 +1,15 @@
-Shift Pay HQ v9.10.3q DEV
+Shift Pay HQ v9.10.3r DEV
 
-Row Identity Mapper
+DEV Cache Reliability Fix
 
-Built from the working v9.10.3p scanner. Basic Pay and Mon-Sat mapping are preserved. Sunday and OT candidates now require arithmetic identity validation using the base hourly rate learned from the payslip itself, or an explicit Units x Rate = Amount relationship on the OCR row.
+Built directly from v9.10.3q Row Identity Mapper. Scanner, rota, pay, payroll calendar and navigation logic are preserved.
 
-No benchmark payroll amounts are hard-coded. Uncertain fields remain blank. PAYE/Net remain review-only. No pay-engine, rota, payroll-calendar or navigation changes.
+DEV /test reliability changes:
+- /test no longer registers a service worker.
+- any existing /test service-worker registrations are unregistered on load.
+- old Shift Pay HQ Cache Storage entries are cleared on load.
+- sw.js is a network-only cleanup worker for any browser that still checks the old registration.
+- index.html is never cached by the worker.
+- badge and header both identify v9.10.3r.
+
+This intentionally sacrifices offline PWA caching only in the DEV /test route so each scanner build can be tested reliably. The live root PWA is untouched.

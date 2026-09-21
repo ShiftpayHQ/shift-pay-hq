@@ -1,5 +1,14 @@
-const CACHE="shift-pay-hq-v9-10-3q";
-const ASSETS=["./manifest.webmanifest","./icon-192.png","./icon-512.png"];
-self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
-self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener("fetch",e=>{if(e.request.mode==="navigate"||new URL(e.request.url).pathname.endsWith("/index.html")){e.respondWith(fetch(e.request,{cache:"no-store"}).catch(()=>caches.match("./index.html")));return;}e.respondWith(fetch(e.request).then(resp=>{if(e.request.method==="GET"&&resp.ok){const copy=resp.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));}return resp;}).catch(()=>caches.match(e.request)));});
+// Shift Pay HQ v9.10.3r DEV cache cleanup worker.
+// /test/index.html does not register this worker. This file exists so an older
+// registration that checks for an update receives a worker that removes itself.
+self.addEventListener("install", event => { self.skipWaiting(); });
+self.addEventListener("activate", event => {
+  event.waitUntil((async()=>{
+    const keys=await caches.keys();
+    await Promise.all(keys.filter(k=>k.startsWith("shift-pay-hq-")).map(k=>caches.delete(k)));
+    await self.registration.unregister();
+    const clientsList=await self.clients.matchAll({type:"window",includeUncontrolled:true});
+    for(const client of clientsList){ client.postMessage({type:"SPHQ_DEV_SW_REMOVED",version:"v9.10.3r"}); }
+  })());
+});
+self.addEventListener("fetch", event => { event.respondWith(fetch(event.request,{cache:"no-store"})); });
