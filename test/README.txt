@@ -1,7 +1,7 @@
-Shift Pay HQ v9.10.3y DEV
+Shift Pay HQ v9.10.3z DEV
 
-Earnings Component Resolver
+Column Geometry Resolver
 
-Built from v9.10.3x. OCR and the NHS earnings table model are preserved. 3y adds a downstream resolver that keeps Hours, Pay quantity, Rate and Amount separate, resolves only unique arithmetically validated labelled rows, and preserves multiple overtime rows rather than silently collapsing them.
+Builds on v9.10.3y. The scanner now looks for OCR-visible NHS earnings-table headings before interpreting numeric columns. Detected heading coordinates are used where available; missing headings fall back to recurring numeric-column geometry and the diagnostic UI says which source was used.
 
-No benchmark payroll amounts are hard-coded. Ambiguous components remain review-only. Existing rota/payroll calendar/navigation are unchanged.
+No benchmark payroll values are hard-coded. Multiple overtime rows remain separate. Ambiguous or incomplete components remain review-only. No pay-engine, rota, payroll-calendar or navigation changes.

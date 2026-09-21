@@ -1,2 +1,2 @@
-Shift Pay HQ v9.10.3y DEV
-Earnings Component Resolver
+Shift Pay HQ v9.10.3z DEV
+Column Geometry Resolver
