@@ -1,2 +1,2 @@
-Shift Pay HQ v9.10.3w DEV
-Earnings Row Inspector
+Shift Pay HQ v9.10.3x DEV
+NHS Earnings Table Model

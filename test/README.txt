@@ -1,7 +1,9 @@
-Shift Pay HQ v9.10.3w DEV
+Shift Pay HQ v9.10.3x DEV
 
-Earnings Row Inspector
+NHS Earnings Table Model
 
-Diagnostic build based on v9.10.3v. Adds a temporary visual inspector for every labelled NHS earnings-row candidate. It shows the OCR row text, learned Hours / pay quantity / Rate / Amount columns, x coordinates, all numeric tokens, and same-row arithmetic evidence.
+Built from the working v9.10.3w scanner. This build models OCR earnings as structured rows: Description / Hours / Pay quantity / Rate / Amount. Hours and pay quantity remain separate, and multiple overtime rows are preserved instead of being silently combined.
 
-No benchmark payroll amounts are hard-coded. No rota, pay-engine, payroll-calendar or navigation changes. Do not confirm a test payslip until extracted values have been reviewed.
+The existing review fields and Pay Check are deliberately unchanged while the structured row model is validated. The NHS Earnings Table Model is diagnostic-only and nothing is saved until the user confirms the payslip.
+
+No benchmark payroll amounts are hard-coded. Unresolved rows remain unresolved. No rota, pay-engine, payroll-calendar or navigation changes.
