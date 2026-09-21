@@ -1,15 +1,7 @@
-Shift Pay HQ v9.10.3s DEV
+Shift Pay HQ v9.10.3t DEV
 
-Sunday + OT Row Lock
+Label-Anchored Row Mapper
 
-Built from v9.10.3r. Keeps the DEV cache reliability fix intact.
+Built from the confirmed-working v9.10.3s scanner/cache baseline. Basic Pay and Mon-Sat mapping are preserved. Sunday remains anchored to the printed Sunday row. OT recognition now also accepts NHS S/T Hours / time-and-a-half label variants before extracting values from that same row.
 
-Scanner changes only:
-- Locks Sunday and OT candidates to their labelled OCR row.
-- Separates displayed hours from effective pay quantity when NHS payroll prints both.
-- Validates amount arithmetic using the document-derived base hourly rate.
-- Preserves Basic and Mon-Sat mapping.
-- No benchmark payroll amounts are hard-coded.
-- Uncertain fields remain blank.
-
-No pay-engine, rota, payroll-calendar or navigation changes.
+No benchmark payroll amounts are hard-coded. The scanner reports what is actually visible on the selected payslip and leaves uncertain values blank. PAYE/Net remain review-only. No pay-engine, rota, payroll-calendar or navigation changes.
