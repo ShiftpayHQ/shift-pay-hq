@@ -1,2 +1,2 @@
-Shift Pay HQ v9.10.3v DEV
-NHS Payslip Table Parser
+Shift Pay HQ v9.10.3w DEV
+Earnings Row Inspector

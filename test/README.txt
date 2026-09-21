@@ -1,7 +1,7 @@
-Shift Pay HQ v9.10.3v DEV
+Shift Pay HQ v9.10.3w DEV
 
-NHS Payslip Table Parser
+Earnings Row Inspector
 
-Built from v9.10.3u. Learns recurring numeric columns from OCR geometry, anchored by Basic Pay amount. Keeps displayed Hours separate from effective/pay quantity, Rate and Amount. A labelled earnings row is only accepted when same-row arithmetic explains its Amount; otherwise fields remain blank.
+Diagnostic build based on v9.10.3v. Adds a temporary visual inspector for every labelled NHS earnings-row candidate. It shows the OCR row text, learned Hours / pay quantity / Rate / Amount columns, x coordinates, all numeric tokens, and same-row arithmetic evidence.
 
-No benchmark payroll amounts are hard-coded. No pay-engine, rota, payroll-calendar or navigation changes.
+No benchmark payroll amounts are hard-coded. No rota, pay-engine, payroll-calendar or navigation changes. Do not confirm a test payslip until extracted values have been reviewed.
