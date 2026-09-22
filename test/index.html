@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3aj DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3aj · Pay-Rate Semantics</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3ak DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3aj · Pay-Rate Semantics</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -479,31 +479,31 @@ function headerColumnGeometry(rows,anchor){
  return {usable:count===4&&separated, count, amount,rate,qty,hours,hits,ordered,separated};
 }
 function inferEarningsGeometryFromRows(rows){
- // 3ai: learn the earnings-table columns from repeated labelled rows, not from one Basic value.
- // Candidate x-columns are formed from recurring OCR number positions. We then look for a
- // left-to-right Hours | Pay quantity | Rate | Amount layout whose SAME-ROW arithmetic explains
- // at least two labelled non-basic earnings rows. No expected payroll values are used.
+ // 3ak: learn what is actually printed, rather than forcing a four-number row.
+ // Most NHS earnings lines are Quantity/Units | Rate | Amount. A separate source/worked-hours
+ // column is accepted ONLY when OCR sees explicit semantic headings for both Hours and Quantity.
  let labelled=rows.filter(r=>{let k=kindFromSpatialRow(r);return k&&k!=='basic'}), pts=[];
  for(const r of labelled)for(const n of spatialRowNumbers(r))if(n.value>0)pts.push(n.x);
  pts.sort((a,b)=>a-b);let cs=[];
- for(const x of pts){let c=cs.find(c=>Math.abs(c.x-x)<=42);if(!c)cs.push(c={x,xs:[]});c.xs.push(x);c.x=c.xs.reduce((a,b)=>a+b,0)/c.xs.length}
+ for(const x of pts){let c=cs.find(c=>Math.abs(c.x-x)<=34);if(!c)cs.push(c={x,xs:[]});c.xs.push(x);c.x=c.xs.reduce((a,b)=>a+b,0)/c.xs.length}
  cs=cs.filter(c=>c.xs.length>=2).sort((a,b)=>a.x-b.x);
  let best=null;
- for(let h=0;h<cs.length;h++)for(let q=h+1;q<cs.length;q++)for(let r=q+1;r<cs.length;r++)for(let a=r+1;a<cs.length;a++){
-   let xs=[cs[h].x,cs[q].x,cs[r].x,cs[a].x]; if(xs.some((x,i)=>i&&x-xs[i-1]<24))continue;
+ // Prove a three-column Quantity | Rate | Amount model from repeated SAME-row arithmetic.
+ for(let q=0;q<cs.length;q++)for(let r=q+1;r<cs.length;r++)for(let a=r+1;a<cs.length;a++){
+   let xs=[cs[q].x,cs[r].x,cs[a].x]; if(xs.some((x,i)=>i&&x-xs[i-1]<28))continue;
    let proof=0,dist=0;
-   for(const row of labelled){let H=nearestNumber(row,xs[0],[.01,400],62),Q=nearestNumber(row,xs[1],[.01,400],62),R=nearestNumber(row,xs[2],[.01,200],62),A=nearestNumber(row,xs[3],[.01,6000],62);if(Q&&R&&A&&approxMoney(Q.value,R.value,A.value)){proof++;dist+=Math.abs(Q.x-xs[1])+Math.abs(R.x-xs[2])+Math.abs(A.x-xs[3])}}
-   if(proof>=2){let score=proof*1000-dist;if(!best||score>best.score)best={score,proof,hoursX:xs[0],quantityX:xs[1],rateX:xs[2],amountX:xs[3],columns:cs.map(c=>c.x)}}
+   for(const row of labelled){let Q=nearestNumber(row,xs[0],[.01,400],46),R=nearestNumber(row,xs[1],[.01,200],46),A=nearestNumber(row,xs[2],[.01,6000],46);if(Q&&R&&A&&Q!==R&&R!==A&&Q!==A&&approxMoney(Q.value,R.value,A.value)){proof++;dist+=Math.abs(Q.x-xs[0])+Math.abs(R.x-xs[1])+Math.abs(A.x-xs[2])}}
+   if(proof>=2){let score=proof*1000-dist;if(!best||score>best.score)best={score,proof,quantityX:xs[0],rateX:xs[1],amountX:xs[2],columns:cs.map(c=>c.x)}}
  }
  return best;
 }
 function earningsGeometry(rows,anchor){
+ let header=headerColumnGeometry(rows,anchor);
+ // A genuine four-column model is allowed only when OCR explicitly identifies all four headings.
+ if(header.usable)return {amountX:header.amount.x,unitsX:header.hours.x,quantityX:header.qty.x,rateX:header.rate.x,columns:[],header,sources:{amount:'header',rate:'header',quantity:'header',hours:'header'},mode:'3ak-explicit-four-column',semanticConfidence:'locked',columnLocked:true,hasSeparateSourceHours:true,semantics:{hours:'source-hours',quantity:'pay-quantity',rate:'pay-rate',amount:'pay-amount'}};
  let learned=inferEarningsGeometryFromRows(rows);
- if(learned)return {amountX:learned.amountX,unitsX:learned.hoursX,quantityX:learned.quantityX,rateX:learned.rateX,columns:learned.columns,header:{usable:false,count:0,hits:{}},sources:{amount:'cross-row-geometry',rate:'cross-row-geometry',quantity:'cross-row-geometry',hours:'cross-row-geometry'},mode:'3ai-cross-row-locked',semanticConfidence:'locked',columnLocked:true,proofRows:learned.proof,semantics:{hours:'source-hours',quantity:'pay-quantity',rate:'pay-rate',amount:'pay-amount'}};
- let header=headerColumnGeometry(rows,anchor), cols=clusterNumericColumns(rows,anchor.x), left=cols.filter(c=>c.x<anchor.x-35);
- let fallbackRate=left.length?left[left.length-1].x:null, fallbackQuantity=left.length>1?left[left.length-2].x:null, fallbackUnits=left.length>2?left[left.length-3].x:(left.length?left[0].x:null);
- let amountX=header.amount?.x??anchor.x, rateX=header.rate?.x??fallbackRate, quantityX=header.qty?.x??fallbackQuantity, unitsX=header.hours?.x??fallbackUnits;
- return {amountX,unitsX,quantityX,rateX,columns:cols.map(c=>c.x),header,sources:{amount:header.amount?'header':'basic-anchor',rate:header.rate?'header':'numeric-cluster',quantity:header.qty?'header':'numeric-cluster',hours:header.hours?'header':'numeric-cluster'},mode:header.usable?'header-locked':'diagnostic-only',semanticConfidence:header.usable?'locked':'diagnostic',columnLocked:header.usable,semantics:{hours:'source-hours',quantity:'pay-quantity',rate:'pay-rate',amount:'pay-amount'}};
+ if(learned)return {amountX:learned.amountX,unitsX:null,quantityX:learned.quantityX,rateX:learned.rateX,columns:learned.columns,header,sources:{amount:'cross-row-arithmetic',rate:'cross-row-arithmetic',quantity:'cross-row-arithmetic',hours:'not-present'},mode:'3ak-three-column-locked',semanticConfidence:'locked',columnLocked:true,hasSeparateSourceHours:false,proofRows:learned.proof,semantics:{hours:'not-observed',quantity:'pay-quantity',rate:'pay-rate',amount:'pay-amount'}};
+ return {amountX:anchor.x,unitsX:null,quantityX:null,rateX:null,columns:[],header,sources:{amount:'basic-anchor',rate:'unresolved',quantity:'unresolved',hours:'unresolved'},mode:'diagnostic-only',semanticConfidence:'diagnostic',columnLocked:false,hasSeparateSourceHours:false,semantics:{hours:'unresolved',quantity:'unresolved',rate:'unresolved',amount:'pay-amount'}};
 }
 function nearestNumber(row,x,range,maxDist=90){if(x==null)return null;let ns=spatialRowNumbers(row).filter(n=>n.value>=range[0]&&n.value<=range[1]);if(!ns.length)return null;ns.sort((a,b)=>Math.abs(a.x-x)-Math.abs(b.x-x));return Math.abs(ns[0].x-x)<=maxDist?ns[0]:null}
 function kindFromSpatialRow(row){let low=fuzzyLabel(row.text);
@@ -514,55 +514,39 @@ function kindFromSpatialRow(row){let low=fuzzyLabel(row.text);
 }
 function nhsEarningsTableRows(words){
  let rows=spatialRows(words),anchor=tableAnchor(rows),best={};if(!anchor)return best;let geo=earningsGeometry(rows,anchor);
- let basicRow=rows.find(r=>kindFromSpatialRow(r)==='basic'),baseRate=null;if(!geo.columnLocked)return best;
- if(basicRow){let nums=spatialRowNumbers(basicRow).filter(n=>n.value>5&&n.value<100&&n.x<anchor.x-40);if(nums.length){nums.sort((a,b)=>b.x-a.x);baseRate=nums[0].value}}
+ if(!geo.columnLocked)return best;
  for(const row of rows){
   let kind=kindFromSpatialRow(row);if(!kind)continue;
-  let amount=nearestNumber(row,geo.amountX,kind==='basic'?[100,10000]:[.01,6000],58);if(!amount)continue;
-  if(kind==='basic'){best.basic={amount:amount.value,units:null,rate:baseRate,score:1000-Math.abs(amount.x-geo.amountX),line:row.text};continue}
-  let units=nearestNumber(row,geo.unitsX,[.01,400],58);
-  let quantity=nearestNumber(row,geo.quantityX,[.01,400],58);
-  let rate=nearestNumber(row,geo.rateX,[.01,200],58);
-  // Safety gate: amount must be arithmetically explained by a numeric pair on THIS labelled row.
-  // NHS unsocial rows can contain displayed hours plus a separate effective/pay quantity, so
-  // validate quantity × rate ≈ amount while returning displayed hours from the Hours column.
-  let arithmeticOK=false,usedQuantity=null,usedRate=null;
-  if(quantity&&rate&&approxMoney(quantity.value,rate.value,amount.value)){arithmeticOK=true;usedQuantity=quantity;usedRate=rate}
-  if(!arithmeticOK&&units&&rate&&approxMoney(units.value,rate.value,amount.value)){arithmeticOK=true;usedQuantity=units;usedRate=rate}
-  // 3ag: no free-form arithmetic rescue. Quantity and rate must come from their locked columns.
-  if(!arithmeticOK||!units)continue;
-  let score=1000-Math.abs(amount.x-geo.amountX)-Math.abs(units.x-geo.unitsX);
-  if(!best[kind]||score>best[kind].score)best[kind]={amount:amount.value,units:units.value,payQuantity:usedQuantity?.value??null,rate:usedRate?.value??null,score,line:row.text,amountX:amount.x,unitsX:units.x,geometry:geo};
+  let amount=nearestNumber(row,geo.amountX,kind==='basic'?[100,10000]:[.01,6000],46);if(!amount)continue;
+  if(kind==='basic'){best.basic={amount:amount.value,units:null,payQuantity:null,rate:null,score:1000-Math.abs(amount.x-geo.amountX),line:row.text,geometry:geo};continue}
+  let quantity=nearestNumber(row,geo.quantityX,[.01,400],46), rate=nearestNumber(row,geo.rateX,[.01,200],46);
+  let sourceHours=geo.hasSeparateSourceHours?nearestNumber(row,geo.unitsX,[.01,400],46):null;
+  // 3ak ownership gate: each semantic cell must be a different OCR number on this row.
+  if(!quantity||!rate||quantity===rate||quantity===amount||rate===amount)continue;
+  if(!approxMoney(quantity.value,rate.value,amount.value))continue;
+  let score=1000-Math.abs(amount.x-geo.amountX)-Math.abs(quantity.x-geo.quantityX)-Math.abs(rate.x-geo.rateX);
+  let rec={amount:amount.value,units:quantity.value,payQuantity:quantity.value,sourceHours:sourceHours?.value??null,rate:rate.value,score,line:row.text,amountX:amount.x,unitsX:quantity.x,geometry:geo};
+  if(!best[kind]||score>best[kind].score)best[kind]=rec;
  }
  return best;
 }
-function applySpatialEarnings(words,found){let rows=nhsEarningsTableRows(words);for(const [k,id] of Object.entries({basic:'aBasic',us:'aUS',sunday:'aSunday',ot:'aOT'})){found[k]=null;setScanFieldState(id,null,'missing')}for(const id of ['aUSUnits','aSundayUnits','aOTUnits'])setScanFieldState(id,null,'missing');for(const k of ['basic','us','sunday','ot'])if(rows[k]){found[k]=rows[k].amount;ownScanEvidence(k,rows[k].amount,'earnings-spatial');setScanFieldState({basic:'aBasic',us:'aUS',sunday:'aSunday',ot:'aOT'}[k],rows[k].amount,'found');if(k!=='basic'){ownScanEvidence(k+'Units',rows[k].units,'earnings-spatial');setScanFieldState({us:'aUSUnits',sunday:'aSundayUnits',ot:'aOTUnits'}[k],rows[k].units,'found')}}return rows}
+function applySpatialEarnings(words,found){let rows=nhsEarningsTableRows(words);for(const [k,id] of Object.entries({basic:'aBasic',us:'aUS',sunday:'aSunday',ot:'aOT'})){found[k]=null;setScanFieldState(id,null,'missing')}for(const id of ['aUSUnits','aSundayUnits','aOTUnits'])setScanFieldState(id,null,'missing');for(const k of ['basic','us','sunday','ot'])if(rows[k]){found[k]=rows[k].amount;ownScanEvidence(k,rows[k].amount,'earnings-spatial');setScanFieldState({basic:'aBasic',us:'aUS',sunday:'aSunday',ot:'aOT'}[k],rows[k].amount,'found');if(k!=='basic'){ownScanEvidence(k+'Units',rows[k].payQuantity,'earnings-spatial');setScanFieldState({us:'aUSUnits',sunday:'aSundayUnits',ot:'aOTUnits'}[k],rows[k].payQuantity,'found')}}return rows}
 let scanEarningsRows=[];
 function allNhsEarningsRows(words){
  let rows=spatialRows(words||[]),anchor=tableAnchor(rows);if(!anchor)return [];
  let geo=earningsGeometry(rows,anchor),out=[];
  for(const row of rows){
   let kind=kindFromSpatialRow(row);if(!kind)continue;
-  let amount=nearestNumber(row,geo.amountX,kind==='basic'?[100,10000]:[.01,6000],58);
-  let hours=nearestNumber(row,geo.unitsX,[.01,400],80);
-  let qty=nearestNumber(row,geo.quantityX,[.01,400],80);
-  let rate=nearestNumber(row,geo.rateX,[.01,200],80);
+  let amount=nearestNumber(row,geo.amountX,kind==='basic'?[100,10000]:[.01,6000],46);
+  let qty=nearestNumber(row,geo.quantityX,[.01,400],46), rate=nearestNumber(row,geo.rateX,[.01,200],46);
+  let hours=geo.hasSeparateSourceHours?nearestNumber(row,geo.unitsX,[.01,400],46):null;
   let basicOwned=kind==='basic'&&amount&&ownsScanEvidence('basic','earnings-spatial');
   let valid=kind==='basic'?basicOwned:false, explanation='';
-  if(kind==='basic'&&basicOwned) explanation='Basic Pay amount anchor';
-  if(kind==='basic'&&!basicOwned) amount=null;
-  if(kind!=='basic'&&amount&&geo.columnLocked){
-    if(qty&&rate&&approxMoney(qty.value,rate.value,amount.value)){valid=true;explanation=qty.value+' × '+rate.value+' ≈ '+amount.value}
-    else if(hours&&rate&&approxMoney(hours.value,rate.value,amount.value)){valid=true;explanation=hours.value+' × '+rate.value+' ≈ '+amount.value}
-    else {valid=false;explanation='Locked columns do not explain this amount'}
-  }
-  let arithmeticQuantity=null;
-  if(valid&&amount){
-    if(qty&&rate&&approxMoney(qty.value,rate.value,amount.value))arithmeticQuantity='pay-quantity';
-    else if(hours&&rate&&approxMoney(hours.value,rate.value,amount.value))arithmeticQuantity='source-hours';
-    else arithmeticQuantity='other-same-row-pair';
-  }
-  out.push({kind,label:kind==='basic'?'Basic Pay':kind==='us'?'Mon–Sat unsocial':kind==='sunday'?'Sunday':'Overtime',hours:hours?.value??null,sourceHours:hours?.value??null,payQuantity:qty?.value??null,rate:rate?.value??null,amount:amount?.value??null,valid,explanation,arithmeticQuantity,semanticConfidence:geo.semanticConfidence,line:row.text,y:row.cy});
+  if(kind==='basic'&&basicOwned)explanation='Basic Pay amount anchor';
+  if(kind==='basic'&&!basicOwned)amount=null;
+  if(kind!=='basic'&&amount&&qty&&rate&&qty!==rate&&qty!==amount&&rate!==amount&&geo.columnLocked&&approxMoney(qty.value,rate.value,amount.value)){valid=true;explanation=qty.value+' × '+rate.value+' ≈ '+amount.value}
+  else if(kind!=='basic')explanation='Printed Quantity × Rate × Amount cells could not be proved on this row';
+  out.push({kind,label:kind==='basic'?'Basic Pay':kind==='us'?'Mon–Sat unsocial':kind==='sunday'?'Sunday':'Overtime',hours:hours?.value??null,sourceHours:hours?.value??null,payQuantity:qty?.value??null,rate:rate?.value??null,amount:amount?.value??null,valid,explanation,arithmeticQuantity:valid&&kind!=='basic'?'pay-quantity':null,semanticConfidence:geo.semanticConfidence,line:row.text,y:row.cy});
  }
  return out;
 }
@@ -592,7 +576,7 @@ function resolveEarningsComponents(rows){
 function componentResolverHtml(){
  const r=resolveEarningsComponents(scanEarningsRows), names={basic:'Basic pay',us:'Mon–Sat unsocial',sunday:'Sunday',ot:'Overtime'};
  let cards=r.components.map((c,i)=>'<tr><td><b>'+escDbg(names[c.kind]||c.label)+'</b><br><small>source row y≈'+Math.round(c.y)+'</small></td><td>'+(c.hours??'—')+'</td><td>'+(c.payQuantity??'—')+'</td><td>'+(c.rate??'—')+'</td><td>'+(c.amount??'—')+'</td><td><b style="color:'+(c.status==='resolved'?'#067647':'#b54708')+'">'+(c.status==='resolved'?'Resolved':'Needs review')+'</b><br><small>'+escDbg(c.reason)+'</small></td></tr>').join('');
- return '<details style="margin-top:12px;background:#f8fafc;border:2px solid #175cd3;border-radius:10px;padding:10px"><summary style="cursor:pointer;font-weight:900">🧩 Earnings Component Resolver · '+r.components.length+' components</summary><p style="font-size:12px;color:#475467">3aj preserves structured earnings rows and interprets labelled overtime multipliers <b>after OCR</b>. A displayed base rate is kept separate from the effective T1/2 or T2 rate. Source hours, pay quantity, rate and amount remain separate. A component is resolved only when its label is unique and its row is arithmetically validated. Multiple overtime lines are preserved and are <b>not</b> silently added together.</p><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left">Component</th><th>Source hrs</th><th>Pay qty</th><th>Rate</th><th>Amount £</th><th>Resolver</th></tr></thead><tbody>'+cards+'</tbody></table></div><p style="font-size:11px;color:#667085;margin-bottom:0">No benchmark amounts are used by this resolver. Ambiguous components remain review-only.</p></details>';
+ return '<details style="margin-top:12px;background:#f8fafc;border:2px solid #175cd3;border-radius:10px;padding:10px"><summary style="cursor:pointer;font-weight:900">🧩 Earnings Component Resolver · '+r.components.length+' components</summary><p style="font-size:12px;color:#475467">3ak preserves structured earnings rows and interprets labelled overtime multipliers <b>after OCR</b>. A displayed base rate is kept separate from the effective T1/2 or T2 rate. Source hours, pay quantity, rate and amount remain separate. A component is resolved only when its label is unique and its row is arithmetically validated. Multiple overtime lines are preserved and are <b>not</b> silently added together.</p><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left">Component</th><th>Source hrs</th><th>Pay qty</th><th>Rate</th><th>Amount £</th><th>Resolver</th></tr></thead><tbody>'+cards+'</tbody></table></div><p style="font-size:11px;color:#667085;margin-bottom:0">No benchmark amounts are used by this resolver. Ambiguous components remain review-only.</p></details>';
 }
 function classifyOTType(c){
  const t=fuzzyLabel(c?.line||'');
@@ -602,7 +586,7 @@ function classifyOTType(c){
  return {label:'Type needs checking',confidence:'unknown'};
 }
 function otPaySemantics(c){
- const t=classifyOTType(c), base=Number(c?.rate), src=Number(c?.sourceHours??c?.hours);
+ const t=classifyOTType(c), base=Number(c?.rate), src=Number(c?.sourceHours);
  let mult=null;if(t.label==='T1/2 overtime')mult=1.5;else if(t.label==='T2 / double time')mult=2;
  if(!mult||!Number.isFinite(base)||!Number.isFinite(src))return null;
  const effectiveRate=+(base*mult).toFixed(4), expectedAmount=+(src*effectiveRate).toFixed(2);
