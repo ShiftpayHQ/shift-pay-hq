@@ -1,12 +1,11 @@
-Shift Pay HQ v9.10.3al DEV — Arithmetic Column Resolver
+Shift Pay HQ v9.10.3am DEV — Row-Column Geometry Resolver
 
-Built from v9.10.3ak.
+Built from v9.10.3al.
 
 Changes:
-- Resolves each labelled earnings row from its own OCR arithmetic candidates.
-- Requires distinct left-to-right Quantity × Rate = Amount tokens.
-- Uses the Basic Pay amount column only as an amount-position anchor.
-- If more than one arithmetic combination fits a row, the row remains review-only instead of guessing.
-- Keeps PAYE/Net evidence isolated from earnings rows.
-- Keeps multiple overtime rows separate.
-- Never creates payroll quantity from source/worked hours or OT multipliers.
+- Learns repeated physical Quantity | Rate | Amount columns across labelled NHS earnings rows.
+- Assigns OCR values by x-position first; arithmetic validates rather than choosing columns.
+- Basic Pay amount must occupy the proved Amount column.
+- Keeps source/worked hours separate and does not invent them.
+- Keeps overtime rows separate and retains T1/2 / T2 semantics.
+- Ambiguous or incomplete rows remain review-only.
