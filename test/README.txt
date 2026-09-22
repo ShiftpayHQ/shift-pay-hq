@@ -1,4 +1,4 @@
-Shift Pay HQ v9.10.3ah DEV — Evidence Ownership Lock
+Shift Pay HQ v9.10.3ai DEV — Earnings Table Geometry Fix
 
 Built from v9.10.3ag.
 

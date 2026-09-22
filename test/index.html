@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3ah DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3ah · Evidence Ownership Lock</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3ai DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3ai · Earnings Table Geometry Fix</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -380,7 +380,7 @@ function resetScanReview(){
 }
 function markScanField(id,state){let st=document.getElementById(id+'State');if(!st)return;if(state==='found'){st.textContent='Found ✓ — check against payslip';st.className='scan-field-state found'}else if(state==='check'){st.textContent='Needs checking';st.className='scan-field-state check'}else{st.textContent='Not found — enter manually';st.className='scan-field-state missing'}}
 function setScanField(id,value){let el=document.getElementById(id);if(!el)return;let n=(value===null||value===undefined||value==='')?null:Number(value);if(n!==null&&Number.isFinite(n)&&n>=0){el.value=n.toFixed(2);markScanField(id,'found')}else{el.value='';markScanField(id,'missing')}}
-async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3ah Evidence Ownership Lock started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
+async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3ai Earnings Table Geometry Fix started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
 function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
 function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
 function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}
@@ -478,21 +478,32 @@ function headerColumnGeometry(rows,anchor){
  let separated=ordered&&gaps.every(g=>g>=28);
  return {usable:count===4&&separated, count, amount,rate,qty,hours,hits,ordered,separated};
 }
+function inferEarningsGeometryFromRows(rows){
+ // 3ai: learn the earnings-table columns from repeated labelled rows, not from one Basic value.
+ // Candidate x-columns are formed from recurring OCR number positions. We then look for a
+ // left-to-right Hours | Pay quantity | Rate | Amount layout whose SAME-ROW arithmetic explains
+ // at least two labelled non-basic earnings rows. No expected payroll values are used.
+ let labelled=rows.filter(r=>{let k=kindFromSpatialRow(r);return k&&k!=='basic'}), pts=[];
+ for(const r of labelled)for(const n of spatialRowNumbers(r))if(n.value>0)pts.push(n.x);
+ pts.sort((a,b)=>a-b);let cs=[];
+ for(const x of pts){let c=cs.find(c=>Math.abs(c.x-x)<=42);if(!c)cs.push(c={x,xs:[]});c.xs.push(x);c.x=c.xs.reduce((a,b)=>a+b,0)/c.xs.length}
+ cs=cs.filter(c=>c.xs.length>=2).sort((a,b)=>a.x-b.x);
+ let best=null;
+ for(let h=0;h<cs.length;h++)for(let q=h+1;q<cs.length;q++)for(let r=q+1;r<cs.length;r++)for(let a=r+1;a<cs.length;a++){
+   let xs=[cs[h].x,cs[q].x,cs[r].x,cs[a].x]; if(xs.some((x,i)=>i&&x-xs[i-1]<24))continue;
+   let proof=0,dist=0;
+   for(const row of labelled){let H=nearestNumber(row,xs[0],[.01,400],62),Q=nearestNumber(row,xs[1],[.01,400],62),R=nearestNumber(row,xs[2],[.01,200],62),A=nearestNumber(row,xs[3],[.01,6000],62);if(Q&&R&&A&&approxMoney(Q.value,R.value,A.value)){proof++;dist+=Math.abs(Q.x-xs[1])+Math.abs(R.x-xs[2])+Math.abs(A.x-xs[3])}}
+   if(proof>=2){let score=proof*1000-dist;if(!best||score>best.score)best={score,proof,hoursX:xs[0],quantityX:xs[1],rateX:xs[2],amountX:xs[3],columns:cs.map(c=>c.x)}}
+ }
+ return best;
+}
 function earningsGeometry(rows,anchor){
+ let learned=inferEarningsGeometryFromRows(rows);
+ if(learned)return {amountX:learned.amountX,unitsX:learned.hoursX,quantityX:learned.quantityX,rateX:learned.rateX,columns:learned.columns,header:{usable:false,count:0,hits:{}},sources:{amount:'cross-row-geometry',rate:'cross-row-geometry',quantity:'cross-row-geometry',hours:'cross-row-geometry'},mode:'3ai-cross-row-locked',semanticConfidence:'locked',columnLocked:true,proofRows:learned.proof,semantics:{hours:'source-hours',quantity:'pay-quantity',rate:'pay-rate',amount:'pay-amount'}};
  let header=headerColumnGeometry(rows,anchor), cols=clusterNumericColumns(rows,anchor.x), left=cols.filter(c=>c.x<anchor.x-35);
- let fallbackRate=left.length?left[left.length-1].x:null;
- let fallbackQuantity=left.length>1?left[left.length-2].x:null;
- let fallbackUnits=left.length>2?left[left.length-3].x:(left.length?left[0].x:null);
- // The Basic Pay amount remains a strong observed amount anchor. Header coordinates override
- // inferred numeric columns only where OCR actually found the heading.
- let amountX=header.amount?.x??anchor.x;
- let rateX=header.rate?.x??fallbackRate;
- let quantityX=header.qty?.x??fallbackQuantity;
- let unitsX=header.hours?.x??fallbackUnits;
- let sources={amount:header.amount?'header':'basic-anchor',rate:header.rate?'header':'numeric-cluster',quantity:header.qty?'header':'numeric-cluster',hours:header.hours?'header':'numeric-cluster'};
- let semanticConfidence=header.usable?'locked':header.count>=2?'diagnostic':'fallback';
- return {amountX,unitsX,quantityX,rateX,columns:cols.map(c=>c.x),header,sources,mode:header.usable?'header-locked':'diagnostic-only',semanticConfidence,columnLocked:header.usable,
-   semantics:{hours:'source-hours',quantity:'pay-quantity',rate:'pay-rate',amount:'pay-amount'}};
+ let fallbackRate=left.length?left[left.length-1].x:null, fallbackQuantity=left.length>1?left[left.length-2].x:null, fallbackUnits=left.length>2?left[left.length-3].x:(left.length?left[0].x:null);
+ let amountX=header.amount?.x??anchor.x, rateX=header.rate?.x??fallbackRate, quantityX=header.qty?.x??fallbackQuantity, unitsX=header.hours?.x??fallbackUnits;
+ return {amountX,unitsX,quantityX,rateX,columns:cols.map(c=>c.x),header,sources:{amount:header.amount?'header':'basic-anchor',rate:header.rate?'header':'numeric-cluster',quantity:header.qty?'header':'numeric-cluster',hours:header.hours?'header':'numeric-cluster'},mode:header.usable?'header-locked':'diagnostic-only',semanticConfidence:header.usable?'locked':'diagnostic',columnLocked:header.usable,semantics:{hours:'source-hours',quantity:'pay-quantity',rate:'pay-rate',amount:'pay-amount'}};
 }
 function nearestNumber(row,x,range,maxDist=90){if(x==null)return null;let ns=spatialRowNumbers(row).filter(n=>n.value>=range[0]&&n.value<=range[1]);if(!ns.length)return null;ns.sort((a,b)=>Math.abs(a.x-x)-Math.abs(b.x-x));return Math.abs(ns[0].x-x)<=maxDist?ns[0]:null}
 function kindFromSpatialRow(row){let low=fuzzyLabel(row.text);
@@ -536,8 +547,10 @@ function allNhsEarningsRows(words){
   let hours=nearestNumber(row,geo.unitsX,[.01,400],80);
   let qty=nearestNumber(row,geo.quantityX,[.01,400],80);
   let rate=nearestNumber(row,geo.rateX,[.01,200],80);
-  let valid=kind==='basic'?!!amount:false, explanation='';
-  if(kind==='basic'&&amount) explanation='Basic Pay amount anchor';
+  let basicOwned=kind==='basic'&&amount&&ownsScanEvidence('basic','earnings-spatial');
+  let valid=kind==='basic'?basicOwned:false, explanation='';
+  if(kind==='basic'&&basicOwned) explanation='Basic Pay amount anchor';
+  if(kind==='basic'&&!basicOwned) amount=null;
   if(kind!=='basic'&&amount&&geo.columnLocked){
     if(qty&&rate&&approxMoney(qty.value,rate.value,amount.value)){valid=true;explanation=qty.value+' × '+rate.value+' ≈ '+amount.value}
     else if(hours&&rate&&approxMoney(hours.value,rate.value,amount.value)){valid=true;explanation=hours.value+' × '+rate.value+' ≈ '+amount.value}
