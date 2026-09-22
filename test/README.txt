@@ -1,13 +1,12 @@
-Shift Pay HQ v9.10.3ai DEV — Earnings Table Geometry Fix
+Shift Pay HQ v9.10.3aj DEV — Pay-Rate Semantics
 
-Built from v9.10.3ag.
+Built from v9.10.3ai.
 
 Changes:
-- Every OCR value has one evidence owner.
-- PAYE/Net totals cannot leak into Basic or earnings fields.
-- Structured resolver may explain an earnings candidate but cannot populate a field unless the spatial earnings scanner already proved/owned it.
-- Arithmetic validates owned evidence only; it never creates evidence.
-- New scans clear ownership, earnings candidates and prior Pay Check state.
-- Existing iPhone OCR pipeline, row diagnostics and Pay Check bridge preserved.
-
-Expected stress-test behaviour: if OCR only proves PAYE and Net, Basic and all earnings summary fields remain blank.
+- Preserves the 3ai earnings-table geometry and evidence ownership rules.
+- T1/2 and T2 labels now drive an explicit multiplier interpretation after OCR.
+- Keeps displayed/base rate separate from effective overtime rate.
+- Never creates payroll quantity by multiplying source hours by 1.5 or 2.
+- Shows calculated OT expectation as review evidence, not as a scanned amount.
+- Unlabelled overtime remains Type needs checking.
+- Nothing is saved until the user confirms the reviewed payslip.

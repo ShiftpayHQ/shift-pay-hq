@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3ai DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3ai · Earnings Table Geometry Fix</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3aj DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3aj · Pay-Rate Semantics</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -380,7 +380,7 @@ function resetScanReview(){
 }
 function markScanField(id,state){let st=document.getElementById(id+'State');if(!st)return;if(state==='found'){st.textContent='Found ✓ — check against payslip';st.className='scan-field-state found'}else if(state==='check'){st.textContent='Needs checking';st.className='scan-field-state check'}else{st.textContent='Not found — enter manually';st.className='scan-field-state missing'}}
 function setScanField(id,value){let el=document.getElementById(id);if(!el)return;let n=(value===null||value===undefined||value==='')?null:Number(value);if(n!==null&&Number.isFinite(n)&&n>=0){el.value=n.toFixed(2);markScanField(id,'found')}else{el.value='';markScanField(id,'missing')}}
-async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3ai Earnings Table Geometry Fix started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
+async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3aj Pay-Rate Semantics started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
 function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
 function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
 function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}
@@ -581,7 +581,7 @@ function resolveEarningsComponents(rows){
    if(good.length===1){const r=good[0];result.components.push({...r,status:'resolved',reason:'One labelled, arithmetically validated row'});result.review[kind]=r;}
    else if(all.length){result.components.push(...all.map(r=>({...r,status:'needs-review',reason:good.length>1?'Multiple validated rows share this label':'Row is not arithmetically complete'})));}
  }
- const ots=groups.ot, goodOt=ots.filter(r=>r.valid&&r.amount!=null);
+ const ots=groups.ot, goodOt=ots.filter(r=>r.valid&&r.amount!=null&&classifyOTType(r).confidence==='unknown');
  if(ots.length===1&&goodOt.length===1){result.components.push({...goodOt[0],status:'resolved',reason:'Single validated overtime row'});result.review.ot=goodOt[0];}
  else if(ots.length){
    // Preserve every OT row. Never collapse several payroll lines into one synthetic OT figure.
@@ -592,7 +592,7 @@ function resolveEarningsComponents(rows){
 function componentResolverHtml(){
  const r=resolveEarningsComponents(scanEarningsRows), names={basic:'Basic pay',us:'Mon–Sat unsocial',sunday:'Sunday',ot:'Overtime'};
  let cards=r.components.map((c,i)=>'<tr><td><b>'+escDbg(names[c.kind]||c.label)+'</b><br><small>source row y≈'+Math.round(c.y)+'</small></td><td>'+(c.hours??'—')+'</td><td>'+(c.payQuantity??'—')+'</td><td>'+(c.rate??'—')+'</td><td>'+(c.amount??'—')+'</td><td><b style="color:'+(c.status==='resolved'?'#067647':'#b54708')+'">'+(c.status==='resolved'?'Resolved':'Needs review')+'</b><br><small>'+escDbg(c.reason)+'</small></td></tr>').join('');
- return '<details style="margin-top:12px;background:#f8fafc;border:2px solid #175cd3;border-radius:10px;padding:10px"><summary style="cursor:pointer;font-weight:900">🧩 Earnings Component Resolver · '+r.components.length+' components</summary><p style="font-size:12px;color:#475467">3ad preserves structured earnings rows and adds cautious overtime classification <b>after OCR</b> using detected headings as column semantics. Source hours, pay quantity, rate and amount remain separate. A component is resolved only when its label is unique and its row is arithmetically validated. Multiple overtime lines are preserved and are <b>not</b> silently added together.</p><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left">Component</th><th>Source hrs</th><th>Pay qty</th><th>Rate</th><th>Amount £</th><th>Resolver</th></tr></thead><tbody>'+cards+'</tbody></table></div><p style="font-size:11px;color:#667085;margin-bottom:0">No benchmark amounts are used by this resolver. Ambiguous components remain review-only.</p></details>';
+ return '<details style="margin-top:12px;background:#f8fafc;border:2px solid #175cd3;border-radius:10px;padding:10px"><summary style="cursor:pointer;font-weight:900">🧩 Earnings Component Resolver · '+r.components.length+' components</summary><p style="font-size:12px;color:#475467">3aj preserves structured earnings rows and interprets labelled overtime multipliers <b>after OCR</b>. A displayed base rate is kept separate from the effective T1/2 or T2 rate. Source hours, pay quantity, rate and amount remain separate. A component is resolved only when its label is unique and its row is arithmetically validated. Multiple overtime lines are preserved and are <b>not</b> silently added together.</p><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left">Component</th><th>Source hrs</th><th>Pay qty</th><th>Rate</th><th>Amount £</th><th>Resolver</th></tr></thead><tbody>'+cards+'</tbody></table></div><p style="font-size:11px;color:#667085;margin-bottom:0">No benchmark amounts are used by this resolver. Ambiguous components remain review-only.</p></details>';
 }
 function classifyOTType(c){
  const t=fuzzyLabel(c?.line||'');
@@ -601,8 +601,19 @@ function classifyOTType(c){
  if(/(?:extended|overrun|extra\s*duty)/i.test(t))return {label:'Extended duty / overrun',confidence:'label'};
  return {label:'Type needs checking',confidence:'unknown'};
 }
+function otPaySemantics(c){
+ const t=classifyOTType(c), base=Number(c?.rate), src=Number(c?.sourceHours??c?.hours);
+ let mult=null;if(t.label==='T1/2 overtime')mult=1.5;else if(t.label==='T2 / double time')mult=2;
+ if(!mult||!Number.isFinite(base)||!Number.isFinite(src))return null;
+ const effectiveRate=+(base*mult).toFixed(4), expectedAmount=+(src*effectiveRate).toFixed(2);
+ return {type:t.label,multiplier:mult,baseRate:base,effectiveRate,sourceHours:src,expectedAmount};
+}
 function payrollFlow(c){
- const src=c.hours??'—', qty=c.payQuantity??'—', rate=c.rate??'—', amt=c.amount??'—';
+ const src=c.hours??'—', qty=c.payQuantity??'—', rate=c.rate??'—', amt=c.amount??'—', sem=c.kind==='ot'?otPaySemantics(c):null;
+ if(sem){
+   const observed=c.amount!=null?' · OCR amount <b>£'+c.amount+'</b>':' · amount not safely read';
+   return '<b>'+src+'</b> source hrs → base rate <b>£'+sem.baseRate+'</b> × <b>'+sem.multiplier+'</b> → effective rate <b>£'+sem.effectiveRate.toFixed(4)+'</b> → expected <b>£'+sem.expectedAmount.toFixed(2)+'</b>'+observed+'<br><small style="color:#667085">Payroll quantity is not inferred by multiplying hours. OCR pay-qty candidate '+(qty==='—'?'—':'<b>'+qty+'</b>')+' remains separate evidence.</small>';
+ }
  if(c.amount!=null&&c.payQuantity!=null&&c.rate!=null)return '<b>'+src+'</b> source hrs → <b>'+qty+'</b> pay qty × <b>'+rate+'</b> = <b>£'+amt+'</b>';
  return '<b>'+src+'</b> source hrs → <b>'+qty+'</b> pay qty → rate <b>'+rate+'</b> → amount <b>'+(c.amount!=null?'£'+c.amount:'—')+'</b>';
 }
@@ -615,7 +626,7 @@ function structuredReviewHtml(){
    return '<tr><td><b>'+escDbg(names[c.kind]||c.label)+'</b>'+(type?'<br><small style="font-weight:800;color:'+(type.confidence==='label'?'#175cd3':'#b54708')+'">'+escDbg(type.label)+'</small>':'')+'<br><small>row '+(i+1)+'</small></td><td colspan="4" style="padding:6px">'+payrollFlow(c)+'</td><td><b style="color:'+col+'">'+status+'</b></td></tr>';
  }).join('');
  const otRows=r.components.filter(c=>c.kind==='ot');
- const otReview=otRows.length?'<div style="margin-top:10px;padding-top:10px;border-top:1px solid #d0d5dd"><div style="font-weight:800;margin-bottom:5px">Overtime rows — kept separate</div><div style="font-size:11px;color:#667085;margin-bottom:7px">Each line remains its own payroll component. OT type is shown only when the OCR row label supports it; otherwise it stays <b>Type needs checking</b>.</div>'+otRows.map((c,i)=>{const t=classifyOTType(c);return '<div style="margin:7px 0;padding:8px;background:white;border:1px solid #d0d5dd;border-radius:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b>OT row '+(i+1)+'</b><b style="color:'+(t.confidence==='label'?'#175cd3':'#b54708')+'">'+escDbg(t.label)+'</b></div><div style="margin-top:5px;font-size:12px">'+payrollFlow(c)+'</div><small style="color:'+(c.status==='resolved'?'#067647':'#b54708')+'">'+(c.status==='resolved'?'Arithmetic validated — review before saving':'Needs review — no combined OT figure created')+'</small></div>'}).join('')+'</div>':'';
+ const otReview=otRows.length?'<div style="margin-top:10px;padding-top:10px;border-top:1px solid #d0d5dd"><div style="font-weight:800;margin-bottom:5px">Overtime rows — kept separate</div><div style="font-size:11px;color:#667085;margin-bottom:7px">Each line remains its own payroll component. For labelled T1/2 or T2 rows, the displayed rate is treated as a base-rate candidate and the effective rate is shown separately. Pay quantity is never created by multiplying source hours.</div>'+otRows.map((c,i)=>{const t=classifyOTType(c);return '<div style="margin:7px 0;padding:8px;background:white;border:1px solid #d0d5dd;border-radius:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b>OT row '+(i+1)+'</b><b style="color:'+(t.confidence==='label'?'#175cd3':'#b54708')+'">'+escDbg(t.label)+'</b></div><div style="margin-top:5px;font-size:12px">'+payrollFlow(c)+'</div><small style="color:'+(c.status==='resolved'?'#067647':'#b54708')+'">'+(c.status==='resolved'?'Arithmetic validated — review before saving':'Needs review — no combined OT figure created')+'</small></div>'}).join('')+'</div>':'';
  return '<div style="margin:0 0 12px;background:#f8fafc;border:2px solid #175cd3;border-radius:10px;padding:10px"><div style="font-weight:900;margin-bottom:4px">🧾 Payslip earnings review</div><div style="font-size:12px;color:#475467;margin-bottom:8px">Read each row left to right: <b>source/worked hours → payroll quantity × rate → amount</b>. Pay Check uses source hours for worked-hours evidence and the amount for money evidence; it never swaps one for the other.</div><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left">Earnings row</th><th colspan="4" style="text-align:left;padding:6px">How payroll calculated it</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+otReview+'</div>';
 }
 function applyResolvedReview(){
