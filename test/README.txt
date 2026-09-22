@@ -1,16 +1,13 @@
-Shift Pay HQ v9.10.3ag DEV — Scan Isolation + Column Lock
+Shift Pay HQ v9.10.3ah DEV — Evidence Ownership Lock
 
-Built directly from v9.10.3af iPhone Review + Pay Check Bridge.
+Built from v9.10.3ag.
 
 Changes:
-- New photo immediately isolates the scan from any previously confirmed Pay Check.
-- Previous green comparison is hidden until the current scan is explicitly reviewed and confirmed.
-- Automatic earnings promotion now requires all four OCR table semantics: Hours → Pay quantity → Rate → Amount.
-- Column headings must have sane left-to-right geometry before values can be trusted.
-- Tightened numeric-to-column distance gates.
-- Arithmetic coincidence alone can no longer rescue or assign an earnings row.
-- Multiple overtime rows remain separate; uncertain OT stays review-only.
-- Existing local OCR pipeline, rota, pay engine and navigation remain unchanged.
+- Every OCR value has one evidence owner.
+- PAYE/Net totals cannot leak into Basic or earnings fields.
+- Structured resolver may explain an earnings candidate but cannot populate a field unless the spatial earnings scanner already proved/owned it.
+- Arithmetic validates owned evidence only; it never creates evidence.
+- New scans clear ownership, earnings candidates and prior Pay Check state.
+- Existing iPhone OCR pipeline, row diagnostics and Pay Check bridge preserved.
 
-Safety rule: label + locked column + same-row arithmetic must agree before an earnings value is promoted.
-Package: 8 files plus ocr-data folder.
+Expected stress-test behaviour: if OCR only proves PAYE and Net, Basic and all earnings summary fields remain blank.

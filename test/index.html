@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3ag DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3ag · Scan Isolation + Column Lock</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3ah DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3ah · Evidence Ownership Lock</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -363,8 +363,13 @@ function autofillSalary(){let b=+hBand.value,p=+hPoint.value,x=(nhsScotlandPaySc
 const scanFieldMap={basic:'aBasic',us:'aUS',sunday:'aSunday',ot:'aOT',gross:'aGross',tax:'aTax',ni:'aNI',pen:'aPen',net:'aNet'};
 const scanLabels={basic:'Basic pay',us:'Unsocial',sunday:'Sunday',ot:'Overtime',gross:'Gross',tax:'PAYE',ni:'NI',pen:'Pension',net:'Net'};
 let scanReviewPending=false;
+let scanEvidenceOwners={};
+function ownScanEvidence(field,value,source){if(value===null||value===undefined||!Number.isFinite(Number(value)))return false;if(scanEvidenceOwners[field])return false;scanEvidenceOwners[field]={value:Number(value),source};return true}
+function ownsScanEvidence(field,source){return !!scanEvidenceOwners[field]&&scanEvidenceOwners[field].source===source}
 function isolateNewScan(){
  scanReviewPending=true;
+ scanEvidenceOwners={};
+ scanEarningsRows=[];
  const sr=document.getElementById('structuredPayslipReview');if(sr)sr.innerHTML='';
  const cmp=document.getElementById('comparison');if(cmp)cmp.innerHTML='<div class="pc-summary warn"><h3>… New scan awaiting review</h3><p>The previous Pay Check is hidden while this photo is being read. A result will only appear after you confirm this scan.</p></div>';
  const ps=document.getElementById('paycheckStatus');if(ps)ps.innerHTML='<span class="badge amber">NEW SCAN · NOT CONFIRMED</span><p class="muted">Previous comparison hidden until this scan is reviewed and confirmed.</p>';
@@ -375,7 +380,7 @@ function resetScanReview(){
 }
 function markScanField(id,state){let st=document.getElementById(id+'State');if(!st)return;if(state==='found'){st.textContent='Found ✓ — check against payslip';st.className='scan-field-state found'}else if(state==='check'){st.textContent='Needs checking';st.className='scan-field-state check'}else{st.textContent='Not found — enter manually';st.className='scan-field-state missing'}}
 function setScanField(id,value){let el=document.getElementById(id);if(!el)return;let n=(value===null||value===undefined||value==='')?null:Number(value);if(n!==null&&Number.isFinite(n)&&n>=0){el.value=n.toFixed(2);markScanField(id,'found')}else{el.value='';markScanField(id,'missing')}}
-async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3ag Scan Isolation + Column Lock started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
+async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3ah Evidence Ownership Lock started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
 function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
 function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
 function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}
@@ -402,7 +407,7 @@ function extractPayslipText(text){
  found.pen=nearbyTotal(lines,[/nhs.{0,5}pension/,/pension/],[0,4000]);
  found.net=nearbyTotal(lines,[/net.{0,5}(?:pay|payment)/],[100,15000]);
  if(found.net!==null&&found.gross!==null&&found.net>found.gross*1.02)found.net=null;for(const k of ['tax','ni','pen'])if(found[k]!==null&&found.gross!==null&&found[k]>found.gross)found[k]=null;
- for(const [k,id] of Object.entries({gross:'aGross',tax:'aTax',ni:'aNI',pen:'aPen',net:'aNet'}))setScanFieldState(id,found[k],found[k]!==null?'check':'missing');
+ for(const [k,id] of Object.entries({gross:'aGross',tax:'aTax',ni:'aNI',pen:'aPen',net:'aNet'})){if(found[k]!==null)ownScanEvidence(k,found[k],'labelled-total');setScanFieldState(id,found[k],found[k]!==null?'check':'missing')}
  return found
 }
 
@@ -520,7 +525,7 @@ function nhsEarningsTableRows(words){
  }
  return best;
 }
-function applySpatialEarnings(words,found){let rows=nhsEarningsTableRows(words);for(const [k,id] of Object.entries({basic:'aBasic',us:'aUS',sunday:'aSunday',ot:'aOT'})){found[k]=null;setScanFieldState(id,null,'missing')}for(const id of ['aUSUnits','aSundayUnits','aOTUnits'])setScanFieldState(id,null,'missing');for(const k of ['basic','us','sunday','ot'])if(rows[k]){found[k]=rows[k].amount;setScanFieldState({basic:'aBasic',us:'aUS',sunday:'aSunday',ot:'aOT'}[k],rows[k].amount,'found');if(k!=='basic')setScanFieldState({us:'aUSUnits',sunday:'aSundayUnits',ot:'aOTUnits'}[k],rows[k].units,'found')}return rows}
+function applySpatialEarnings(words,found){let rows=nhsEarningsTableRows(words);for(const [k,id] of Object.entries({basic:'aBasic',us:'aUS',sunday:'aSunday',ot:'aOT'})){found[k]=null;setScanFieldState(id,null,'missing')}for(const id of ['aUSUnits','aSundayUnits','aOTUnits'])setScanFieldState(id,null,'missing');for(const k of ['basic','us','sunday','ot'])if(rows[k]){found[k]=rows[k].amount;ownScanEvidence(k,rows[k].amount,'earnings-spatial');setScanFieldState({basic:'aBasic',us:'aUS',sunday:'aSunday',ot:'aOT'}[k],rows[k].amount,'found');if(k!=='basic'){ownScanEvidence(k+'Units',rows[k].units,'earnings-spatial');setScanFieldState({us:'aUSUnits',sunday:'aSundayUnits',ot:'aOTUnits'}[k],rows[k].units,'found')}}return rows}
 let scanEarningsRows=[];
 function allNhsEarningsRows(words){
  let rows=spatialRows(words||[]),anchor=tableAnchor(rows);if(!anchor)return [];
@@ -603,10 +608,10 @@ function structuredReviewHtml(){
 function applyResolvedReview(){
  const r=resolveEarningsComponents(scanEarningsRows), ids={basic:['aBasic',null],us:['aUS','aUSUnits'],sunday:['aSunday','aSundayUnits']};
  const host=document.getElementById('structuredPayslipReview'); if(host)host.innerHTML=structuredReviewHtml();
- for(const k of Object.keys(ids)){const [amt,qty]=ids[k],c=r.review[k];if(c){setScanFieldState(amt,c.amount,'found');if(qty)setScanFieldState(qty,c.payQuantity,'found')}}
+ for(const k of Object.keys(ids)){const [amt,qty]=ids[k],c=r.review[k];if(c&&ownsScanEvidence(k,'earnings-spatial')){setScanFieldState(amt,c.amount,'found');if(qty&&ownsScanEvidence(k+'Units','earnings-spatial'))setScanFieldState(qty,c.payQuantity,'found')}else{setScanFieldState(amt,null,'missing');if(qty)setScanFieldState(qty,null,'missing')}}
  // Summary fields explicitly display payroll pay quantity; source/worked hours remain in the structured review above.
  // Overtime is only populated when there is exactly one uniquely resolved OT row.
- const ot=r.review.ot;if(ot){setScanFieldState('aOT',ot.amount,'found');setScanFieldState('aOTUnits',ot.payQuantity,'found')}else if(scanEarningsRows.some(x=>x.kind==='ot')){setScanFieldState('aOT',null,'missing');setScanFieldState('aOTUnits',null,'missing')}
+ const ot=r.review.ot;if(ot&&ownsScanEvidence('ot','earnings-spatial')&&ownsScanEvidence('otUnits','earnings-spatial')){setScanFieldState('aOT',ot.amount,'found');setScanFieldState('aOTUnits',ot.payQuantity,'found')}else if(scanEarningsRows.some(x=>x.kind==='ot')){setScanFieldState('aOT',null,'missing');setScanFieldState('aOTUnits',null,'missing')}
 }
 
 function earningsRowInspectorHtml(words){
