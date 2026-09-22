@@ -1,4 +1,4 @@
-// Shift Pay HQ v9.10.3aa DEV cache cleanup worker.
+// Shift Pay HQ v9.10.3ab DEV cache cleanup worker.
 self.addEventListener("install", event => { self.skipWaiting(); });
-self.addEventListener("activate", event => { event.waitUntil((async()=>{ const keys=await caches.keys(); await Promise.all(keys.filter(k=>k.startsWith("shift-pay-hq-")).map(k=>caches.delete(k))); await self.registration.unregister(); const cs=await self.clients.matchAll({type:"window",includeUncontrolled:true}); for(const c of cs)c.postMessage({type:"SPHQ_DEV_SW_REMOVED",version:"v9.10.3aa"}); })()); });
+self.addEventListener("activate", event => { event.waitUntil((async()=>{ const keys=await caches.keys(); await Promise.all(keys.filter(k=>k.startsWith("shift-pay-hq-")).map(k=>caches.delete(k))); await self.registration.unregister(); const cs=await self.clients.matchAll({type:"window",includeUncontrolled:true}); for(const c of cs)c.postMessage({type:"SPHQ_DEV_SW_REMOVED",version:"v9.10.3ab"}); })()); });
 self.addEventListener("fetch", event => { event.respondWith(fetch(event.request,{cache:"no-store"})); });

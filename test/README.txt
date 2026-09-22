@@ -1,7 +1,10 @@
-Shift Pay HQ v9.10.3aa DEV
+Shift Pay HQ v9.10.3ab DEV
+Structured Payslip Review
 
-Column Semantics Resolver
-
-Builds directly on v9.10.3z. Detected NHS earnings-table headings now carry meaning as well as geometry: Source hours, Pay quantity, Rate and Amount remain distinct throughout the OCR row model. Arithmetic can validate Pay quantity × Rate ≈ Amount without overwriting Source hours.
-
-No benchmark payroll values are hard-coded. Multiple overtime rows remain separate and review-only unless uniquely resolved. Ambiguous/incomplete rows stay blank in Review payslip data. No pay-engine, rota, payroll-calendar or navigation changes.
+Changes from 3aa:
+- Review screen now consumes structured earnings components directly.
+- Source hours, pay quantity, rate and amount remain distinct.
+- Summary unit fields use payroll pay quantity, not source/worked hours.
+- Multiple overtime rows remain separate and review-only; no silent summing.
+- No benchmark payslip values are hard-coded.
+- Pay engine, rota and navigation unchanged.
