@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3am DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3am · Arithmetic Column Resolver</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3an DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3an · Header-Anchored Table Scanner</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -540,29 +540,34 @@ function resolveArithmeticRow(row,kind,anchorX){
 }
 
 function geometryValidatedRows(words){
- // 3am: establish physical Quantity | Rate | Amount columns across the earnings table first.
- // Arithmetic is then used only to validate a row; it no longer chooses the columns itself.
+ // 3an: HEADER-ANCHORED TABLE SCANNER.
+ // First identify the labelled earnings-table region, then prefer semantic headings to lock
+ // Quantity | Rate | Amount lanes. Deductions/totals below the earnings region never participate.
  const rows=spatialRows(words||[]), labelled=rows.filter(r=>kindFromSpatialRow(r));
- const candidates=[];
- for(const row of labelled){
-   const kind=kindFromSpatialRow(row); if(kind==='basic')continue;
-   for(const m of arithmeticRowTriplets(row,null)) candidates.push({row,kind,m});
+ if(!labelled.length)return {rows,labelled,geometry:null,tableRegion:null,headerLock:null};
+ const ys=labelled.map(r=>r.cy), firstY=Math.min(...ys), lastY=Math.max(...ys);
+ const anchor=tableAnchor(rows);
+ const header=anchor?headerColumnGeometry(rows,anchor):{usable:false,count:0};
+ // Bound the table tightly around earnings rows. This prevents PAYE/NI/Net figures becoming
+ // candidates for Basic Pay or any enhancement component.
+ const tableRegion={top:firstY-460,bottom:lastY+Math.max(45,(lastY-firstY)*.18)};
+ const earningsRows=labelled.filter(r=>r.cy>=tableRegion.top&&r.cy<=tableRegion.bottom);
+ if(header&&header.usable){
+   return {rows,labelled:earningsRows,geometry:{quantityX:header.qty.x,rateX:header.rate.x,amountX:header.amount.x,sourceHoursX:header.hours.x,proof:'header',headerLocked:true,hasSeparateSourceHours:true},tableRegion,headerLock:header};
  }
- // Cluster the x coordinates of arithmetically plausible triplets across multiple labelled rows.
- const cluster=(vals,tol=38)=>{let out=[]; for(const v of vals.sort((a,b)=>a-b)){let c=out.find(c=>Math.abs(c.x-v)<=tol); if(!c)out.push(c={x:v,vals:[]}); c.vals.push(v); c.x=c.vals.reduce((a,b)=>a+b,0)/c.vals.length} return out};
- const qcs=cluster(candidates.map(c=>c.m.quantity.x)), rcs=cluster(candidates.map(c=>c.m.rate.x)), acs=cluster(candidates.map(c=>c.m.amount.x));
+ // If OCR misses one or more headings, learn lanes ONLY from labelled rows inside the bounded
+ // earnings table. Arithmetic can validate a proposed lane set but cannot import values from totals.
+ const candidates=[];
+ for(const row of earningsRows){if(kindFromSpatialRow(row)==='basic')continue;for(const m of arithmeticRowTriplets(row,null))candidates.push({row,m});}
+ const cluster=(vals,tol=34)=>{let out=[];for(const v of vals.sort((a,b)=>a-b)){let c=out.find(c=>Math.abs(c.x-v)<=tol);if(!c)out.push(c={x:v,vals:[]});c.vals.push(v);c.x=c.vals.reduce((a,b)=>a+b,0)/c.vals.length}return out};
+ const qcs=cluster(candidates.map(c=>c.m.quantity.x)),rcs=cluster(candidates.map(c=>c.m.rate.x)),acs=cluster(candidates.map(c=>c.m.amount.x));
  let best=null;
  for(const q of qcs)for(const r of rcs)for(const a of acs){
-   if(!(q.x+25<r.x&&r.x+25<a.x))continue;
-   let proof=0,err=0,used=[];
-   for(const row of labelled){
-     if(kindFromSpatialRow(row)==='basic')continue;
-     const Q=nearestNumber(row,q.x,[.01,400],48),R=nearestNumber(row,r.x,[.01,200],48),A=nearestNumber(row,a.x,[.01,10000],48);
-     if(Q&&R&&A&&Q!==R&&R!==A&&Q!==A&&approxMoney(Q.value,R.value,A.value)){proof++;err+=Math.abs(Q.x-q.x)+Math.abs(R.x-r.x)+Math.abs(A.x-a.x);used.push(row)}
-   }
-   if(proof>=2){const score=proof*10000-err; if(!best||score>best.score)best={quantityX:q.x,rateX:r.x,amountX:a.x,proof,score}}
+   if(!(q.x+25<r.x&&r.x+25<a.x))continue;let proof=0,err=0;
+   for(const row of earningsRows){if(kindFromSpatialRow(row)==='basic')continue;const Q=nearestNumber(row,q.x,[.01,400],44),R=nearestNumber(row,r.x,[.01,200],44),A=nearestNumber(row,a.x,[.01,10000],44);if(Q&&R&&A&&Q!==R&&R!==A&&Q!==A&&approxMoney(Q.value,R.value,A.value)){proof++;err+=Math.abs(Q.x-q.x)+Math.abs(R.x-r.x)+Math.abs(A.x-a.x)}}
+   if(proof>=2){const score=proof*10000-err;if(!best||score>best.score)best={quantityX:q.x,rateX:r.x,amountX:a.x,sourceHoursX:null,proof,score,headerLocked:false,hasSeparateSourceHours:false}}
  }
- return {rows,labelled,geometry:best};
+ return {rows,labelled:earningsRows,geometry:best,tableRegion,headerLock:header};
 }
 function resolveGeometryRow(row,geometry){
  if(!geometry)return {status:'none',reason:'No repeated earnings-table column geometry proved'};
@@ -610,7 +615,7 @@ function earningsTableModelHtml(words){
  scanEarningsRows=allNhsEarningsRows(words);
  if(!scanEarningsRows.length)return '<details open style="margin-top:12px;background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:10px"><summary style="font-weight:900">NHS Earnings Table Model</summary><p>No labelled earnings rows could be modelled.</p></details>';
  let rows=scanEarningsRows.map((r,i)=>'<tr><td><b>'+escDbg(r.label)+'</b><br><small>row '+(i+1)+' · y≈'+Math.round(r.y)+'</small></td><td>'+(r.hours??'—')+'</td><td>'+(r.payQuantity??'—')+'</td><td>'+(r.rate??'—')+'</td><td>'+(r.amount??'—')+'</td><td><span style="font-weight:800;color:'+(r.valid?'#067647':'#b42318')+'">'+(r.valid?'Validated':'Unresolved')+'</span><br><small>'+escDbg(r.explanation||'No same-row arithmetic proof')+'</small></td></tr>').join('');
- return '<details style="margin-top:12px;background:#f8fafc;border:2px solid #344054;border-radius:10px;padding:10px"><summary style="cursor:pointer;font-weight:900">🧾 NHS Earnings Table Model · '+scanEarningsRows.length+' rows</summary><p style="font-size:12px;color:#475467">Scanner output is represented as earnings rows. 3am first proves repeated physical <b>Quantity | Rate | Amount</b> columns across labelled earnings rows, then uses same-row arithmetic only as validation. A number cannot move between payroll columns just because its arithmetic looks plausible. Multiple overtime rows are preserved. Nothing is saved until you confirm the payslip.</p><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left;padding:6px">Earnings row</th><th>Source hrs</th><th>Pay qty</th><th>Rate</th><th>Amount £</th><th>Check</th></tr></thead><tbody>'+rows+'</tbody></table></div><p style="font-size:11px;color:#667085;margin-bottom:0">Structured OCR model feeding the 3am row-column geometry resolver. Rows remain separate and traceable.</p></details>';
+ return '<details style="margin-top:12px;background:#f8fafc;border:2px solid #344054;border-radius:10px;padding:10px"><summary style="cursor:pointer;font-weight:900">🧾 NHS Earnings Table Model · '+scanEarningsRows.length+' rows</summary><p style="font-size:12px;color:#475467">Scanner output is represented as earnings rows. 3an first anchors the <b>earnings table</b> and prefers its printed column headings to lock <b>Quantity | Rate | Amount</b> lanes, then uses same-row arithmetic only as validation. A number cannot move between payroll columns just because its arithmetic looks plausible. Multiple overtime rows are preserved. Nothing is saved until you confirm the payslip.</p><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left;padding:6px">Earnings row</th><th>Source hrs</th><th>Pay qty</th><th>Rate</th><th>Amount £</th><th>Check</th></tr></thead><tbody>'+rows+'</tbody></table></div><p style="font-size:11px;color:#667085;margin-bottom:0">Structured OCR model feeding the 3an header-anchored table resolver. Rows remain separate and traceable.</p></details>';
 }
 
 function resolveEarningsComponents(rows){
@@ -632,7 +637,7 @@ function resolveEarningsComponents(rows){
 function componentResolverHtml(){
  const r=resolveEarningsComponents(scanEarningsRows), names={basic:'Basic pay',us:'Mon–Sat unsocial',sunday:'Sunday',ot:'Overtime'};
  let cards=r.components.map((c,i)=>'<tr><td><b>'+escDbg(names[c.kind]||c.label)+'</b><br><small>source row y≈'+Math.round(c.y)+'</small></td><td>'+(c.hours??'—')+'</td><td>'+(c.payQuantity??'—')+'</td><td>'+(c.rate??'—')+'</td><td>'+(c.amount??'—')+'</td><td><b style="color:'+(c.status==='resolved'?'#067647':'#b54708')+'">'+(c.status==='resolved'?'Resolved':'Needs review')+'</b><br><small>'+escDbg(c.reason)+'</small></td></tr>').join('');
- return '<details style="margin-top:12px;background:#f8fafc;border:2px solid #175cd3;border-radius:10px;padding:10px"><summary style="cursor:pointer;font-weight:900">🧩 Earnings Component Resolver · '+r.components.length+' components</summary><p style="font-size:12px;color:#475467">3am resolves each earnings row from proved physical Quantity | Rate | Amount columns and validates it with printed Quantity × Rate = Amount arithmetic and interprets labelled overtime multipliers <b>after OCR</b>. A displayed base rate is kept separate from the effective T1/2 or T2 rate. Source hours, pay quantity, rate and amount remain separate. A component is resolved only when its label is unique and its row is arithmetically validated. Multiple overtime lines are preserved and are <b>not</b> silently added together.</p><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left">Component</th><th>Source hrs</th><th>Pay qty</th><th>Rate</th><th>Amount £</th><th>Resolver</th></tr></thead><tbody>'+cards+'</tbody></table></div><p style="font-size:11px;color:#667085;margin-bottom:0">No benchmark amounts are used by this resolver. Ambiguous components remain review-only.</p></details>';
+ return '<details style="margin-top:12px;background:#f8fafc;border:2px solid #175cd3;border-radius:10px;padding:10px"><summary style="cursor:pointer;font-weight:900">🧩 Earnings Component Resolver · '+r.components.length+' components</summary><p style="font-size:12px;color:#475467">3an resolves each earnings row only inside the header-anchored earnings-table region from proved physical Quantity | Rate | Amount columns and validates it with printed Quantity × Rate = Amount arithmetic and interprets labelled overtime multipliers <b>after OCR</b>. A displayed base rate is kept separate from the effective T1/2 or T2 rate. Source hours, pay quantity, rate and amount remain separate. A component is resolved only when its label is unique and its row is arithmetically validated. Multiple overtime lines are preserved and are <b>not</b> silently added together.</p><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left">Component</th><th>Source hrs</th><th>Pay qty</th><th>Rate</th><th>Amount £</th><th>Resolver</th></tr></thead><tbody>'+cards+'</tbody></table></div><p style="font-size:11px;color:#667085;margin-bottom:0">No benchmark amounts are used by this resolver. Ambiguous components remain review-only.</p></details>';
 }
 function classifyOTType(c){
  const t=fuzzyLabel(c?.line||'');

@@ -1,11 +1,15 @@
-Shift Pay HQ v9.10.3am DEV — Row-Column Geometry Resolver
+Shift Pay HQ v9.10.3an DEV — Header-Anchored Table Scanner
 
-Built from v9.10.3al.
+Built directly from v9.10.3am.
 
 Changes:
-- Learns repeated physical Quantity | Rate | Amount columns across labelled NHS earnings rows.
-- Assigns OCR values by x-position first; arithmetic validates rather than choosing columns.
-- Basic Pay amount must occupy the proved Amount column.
-- Keeps source/worked hours separate and does not invent them.
-- Keeps overtime rows separate and retains T1/2 / T2 semantics.
-- Ambiguous or incomplete rows remain review-only.
+- Locates and bounds the labelled NHS earnings-table region before assigning payroll values.
+- Prefers OCR table headings to lock Source Hours | Pay Quantity | Rate | Amount lanes.
+- PAYE, NI, pension, gross and net figures outside the earnings region cannot become earnings evidence.
+- If headings are incomplete, fallback geometry is learned only from labelled earnings rows inside the bounded table.
+- Arithmetic validates already-assigned columns; it does not decide column meaning.
+- Basic Pay remains blank unless an amount is safely present in the proved Amount lane.
+- Multiple overtime rows remain separate and review-only when ambiguous.
+- No benchmark payroll values are embedded in the scanner.
+
+Test with the same sideways payslip used for 3am.
