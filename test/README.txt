@@ -1,12 +1,13 @@
-Shift Pay HQ v9.10.3ac DEV — Payroll Quantity Review
+Shift Pay HQ v9.10.3ad DEV — Review UX + OT Classification
 
-Built directly from v9.10.3ab.
+Built directly from v9.10.3ac.
 
 Changes:
-- User-facing review now distinguishes Source hours from Pay quantity.
-- Mon–Sat and Sunday summary fields are explicitly labelled Pay qty.
-- Structured overtime rows remain separate in the review and are never silently totalled.
-- Resolved rows can still populate review values; ambiguous OT remains Needs review.
-- OCR, pay engine, rota and navigation are otherwise unchanged.
+- Human-readable review flow: Source/worked hours → Pay quantity × Rate → Amount.
+- Keeps source hours and payroll quantity distinct.
+- Keeps every overtime row separate; never invents a combined OT total.
+- Cautiously classifies T1/2, T2/double time, or extended duty only when the OCR row label supports it.
+- Ambiguous overtime remains “Type needs checking”.
+- Existing OCR, pay engine, rota and navigation otherwise unchanged.
 
 Package: 8 files plus ocr-data folder.
