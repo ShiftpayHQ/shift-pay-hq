@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3af DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3af · iPhone Review + Pay Check Bridge</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3ag DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3ag · Scan Isolation + Column Lock</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -362,13 +362,20 @@ function updatePayPoints(){let b=+hBand.value,pts=nhsScotlandPayScale2627[b]||[]
 function autofillSalary(){let b=+hBand.value,p=+hPoint.value,x=(nhsScotlandPayScale2627[b]||[]).find(v=>v.point===p);if(!x)return;hSalary.value=x.salary;payScaleSummary.innerHTML=`<small>OFFICIAL 2026/27 RATE</small><strong>${fmt(x.salary)} a year</strong><span>Band ${b} · Point ${p} · published hourly rate £${x.hourly.toFixed(2)}</span>`}
 const scanFieldMap={basic:'aBasic',us:'aUS',sunday:'aSunday',ot:'aOT',gross:'aGross',tax:'aTax',ni:'aNI',pen:'aPen',net:'aNet'};
 const scanLabels={basic:'Basic pay',us:'Unsocial',sunday:'Sunday',ot:'Overtime',gross:'Gross',tax:'PAYE',ni:'NI',pen:'Pension',net:'Net'};
+let scanReviewPending=false;
+function isolateNewScan(){
+ scanReviewPending=true;
+ const sr=document.getElementById('structuredPayslipReview');if(sr)sr.innerHTML='';
+ const cmp=document.getElementById('comparison');if(cmp)cmp.innerHTML='<div class="pc-summary warn"><h3>… New scan awaiting review</h3><p>The previous Pay Check is hidden while this photo is being read. A result will only appear after you confirm this scan.</p></div>';
+ const ps=document.getElementById('paycheckStatus');if(ps)ps.innerHTML='<span class="badge amber">NEW SCAN · NOT CONFIRMED</span><p class="muted">Previous comparison hidden until this scan is reviewed and confirmed.</p>';
+}
 function resetScanReview(){
   // A new scan must start clean. Previously loaded/test payslip values must never look like scanner results.
   ['aBasic','aUSUnits','aUS','aSundayUnits','aSunday','aOTUnits','aOT','aGross','aTax','aNI','aPen','aNet'].forEach(id=>{let el=document.getElementById(id);if(el)el.value='';let st=document.getElementById(id+'State');if(st){st.textContent='Not found';st.className='scan-field-state missing'}});
 }
 function markScanField(id,state){let st=document.getElementById(id+'State');if(!st)return;if(state==='found'){st.textContent='Found ✓ — check against payslip';st.className='scan-field-state found'}else if(state==='check'){st.textContent='Needs checking';st.className='scan-field-state check'}else{st.textContent='Not found — enter manually';st.className='scan-field-state missing'}}
 function setScanField(id,value){let el=document.getElementById(id);if(!el)return;let n=(value===null||value===undefined||value==='')?null:Number(value);if(n!==null&&Number.isFinite(n)&&n>=0){el.value=n.toFixed(2);markScanField(id,'found')}else{el.value='';markScanField(id,'missing')}}
-async function handlePayslipPhoto(file){if(!file)return;resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3af Review + Pay Check Bridge started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
+async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3ag Scan Isolation + Column Lock started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
 function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
 function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
 function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}
@@ -459,7 +466,12 @@ function headerColumnGeometry(rows,anchor){
  const nearest=(a,target)=>a.length?[...a].sort((u,v)=>Math.abs(u.x-target)-Math.abs(v.x-target))[0]:null;
  let amount=nearest(hits.amount,anchor.x), rate=nearest(hits.rate,anchor.x-140), qty=nearest(hits.quantity,anchor.x-250), hours=nearest(hits.hours,anchor.x-360);
  let count=[amount,rate,qty,hours].filter(Boolean).length;
- return {usable:count>=2, count, amount,rate,qty,hours,hits};
+ // 3ag Column Lock: automatic row promotion requires all four semantic headings and
+ // a physically sane left-to-right order. Arithmetic alone can never assign a column.
+ let ordered=!!(hours&&qty&&rate&&amount&&hours.x<qty.x&&qty.x<rate.x&&rate.x<amount.x);
+ let gaps=ordered?[qty.x-hours.x,rate.x-qty.x,amount.x-rate.x]:[];
+ let separated=ordered&&gaps.every(g=>g>=28);
+ return {usable:count===4&&separated, count, amount,rate,qty,hours,hits,ordered,separated};
 }
 function earningsGeometry(rows,anchor){
  let header=headerColumnGeometry(rows,anchor), cols=clusterNumericColumns(rows,anchor.x), left=cols.filter(c=>c.x<anchor.x-35);
@@ -473,8 +485,8 @@ function earningsGeometry(rows,anchor){
  let quantityX=header.qty?.x??fallbackQuantity;
  let unitsX=header.hours?.x??fallbackUnits;
  let sources={amount:header.amount?'header':'basic-anchor',rate:header.rate?'header':'numeric-cluster',quantity:header.qty?'header':'numeric-cluster',hours:header.hours?'header':'numeric-cluster'};
- let semanticConfidence=header.count>=3?'high':header.count>=2?'medium':'fallback';
- return {amountX,unitsX,quantityX,rateX,columns:cols.map(c=>c.x),header,sources,mode:header.usable?'header-assisted':'numeric-fallback',semanticConfidence,
+ let semanticConfidence=header.usable?'locked':header.count>=2?'diagnostic':'fallback';
+ return {amountX,unitsX,quantityX,rateX,columns:cols.map(c=>c.x),header,sources,mode:header.usable?'header-locked':'diagnostic-only',semanticConfidence,columnLocked:header.usable,
    semantics:{hours:'source-hours',quantity:'pay-quantity',rate:'pay-rate',amount:'pay-amount'}};
 }
 function nearestNumber(row,x,range,maxDist=90){if(x==null)return null;let ns=spatialRowNumbers(row).filter(n=>n.value>=range[0]&&n.value<=range[1]);if(!ns.length)return null;ns.sort((a,b)=>Math.abs(a.x-x)-Math.abs(b.x-x));return Math.abs(ns[0].x-x)<=maxDist?ns[0]:null}
@@ -486,24 +498,22 @@ function kindFromSpatialRow(row){let low=fuzzyLabel(row.text);
 }
 function nhsEarningsTableRows(words){
  let rows=spatialRows(words),anchor=tableAnchor(rows),best={};if(!anchor)return best;let geo=earningsGeometry(rows,anchor);
- let basicRow=rows.find(r=>kindFromSpatialRow(r)==='basic'),baseRate=null;
+ let basicRow=rows.find(r=>kindFromSpatialRow(r)==='basic'),baseRate=null;if(!geo.columnLocked)return best;
  if(basicRow){let nums=spatialRowNumbers(basicRow).filter(n=>n.value>5&&n.value<100&&n.x<anchor.x-40);if(nums.length){nums.sort((a,b)=>b.x-a.x);baseRate=nums[0].value}}
  for(const row of rows){
   let kind=kindFromSpatialRow(row);if(!kind)continue;
-  let amount=nearestNumber(row,geo.amountX,kind==='basic'?[500,10000]:[.01,6000],95);if(!amount)continue;
+  let amount=nearestNumber(row,geo.amountX,kind==='basic'?[100,10000]:[.01,6000],58);if(!amount)continue;
   if(kind==='basic'){best.basic={amount:amount.value,units:null,rate:baseRate,score:1000-Math.abs(amount.x-geo.amountX),line:row.text};continue}
-  let units=nearestNumber(row,geo.unitsX,[.01,400],80);
-  let quantity=nearestNumber(row,geo.quantityX,[.01,400],80);
-  let rate=nearestNumber(row,geo.rateX,[.01,200],80);
+  let units=nearestNumber(row,geo.unitsX,[.01,400],58);
+  let quantity=nearestNumber(row,geo.quantityX,[.01,400],58);
+  let rate=nearestNumber(row,geo.rateX,[.01,200],58);
   // Safety gate: amount must be arithmetically explained by a numeric pair on THIS labelled row.
   // NHS unsocial rows can contain displayed hours plus a separate effective/pay quantity, so
   // validate quantity × rate ≈ amount while returning displayed hours from the Hours column.
   let arithmeticOK=false,usedQuantity=null,usedRate=null;
   if(quantity&&rate&&approxMoney(quantity.value,rate.value,amount.value)){arithmeticOK=true;usedQuantity=quantity;usedRate=rate}
   if(!arithmeticOK&&units&&rate&&approxMoney(units.value,rate.value,amount.value)){arithmeticOK=true;usedQuantity=units;usedRate=rate}
-  // Some layouts show base rate with an enhancement quantity. Accept only when the same-row
-  // numbers explain the amount; never derive or substitute a benchmark target.
-  if(!arithmeticOK){let ns=spatialRowNumbers(row).filter(n=>n.x<amount.x-20&&n.value>0);outer:for(let i=0;i<ns.length;i++)for(let j=i+1;j<ns.length;j++)if(approxMoney(ns[i].value,ns[j].value,amount.value)){arithmeticOK=true;usedQuantity=ns[i];usedRate=ns[j];break outer}}
+  // 3ag: no free-form arithmetic rescue. Quantity and rate must come from their locked columns.
   if(!arithmeticOK||!units)continue;
   let score=1000-Math.abs(amount.x-geo.amountX)-Math.abs(units.x-geo.unitsX);
   if(!best[kind]||score>best[kind].score)best[kind]={amount:amount.value,units:units.value,payQuantity:usedQuantity?.value??null,rate:usedRate?.value??null,score,line:row.text,amountX:amount.x,unitsX:units.x,geometry:geo};
@@ -517,16 +527,16 @@ function allNhsEarningsRows(words){
  let geo=earningsGeometry(rows,anchor),out=[];
  for(const row of rows){
   let kind=kindFromSpatialRow(row);if(!kind)continue;
-  let amount=nearestNumber(row,geo.amountX,kind==='basic'?[500,10000]:[.01,6000],95);
+  let amount=nearestNumber(row,geo.amountX,kind==='basic'?[100,10000]:[.01,6000],58);
   let hours=nearestNumber(row,geo.unitsX,[.01,400],80);
   let qty=nearestNumber(row,geo.quantityX,[.01,400],80);
   let rate=nearestNumber(row,geo.rateX,[.01,200],80);
   let valid=kind==='basic'?!!amount:false, explanation='';
   if(kind==='basic'&&amount) explanation='Basic Pay amount anchor';
-  if(kind!=='basic'&&amount){
+  if(kind!=='basic'&&amount&&geo.columnLocked){
     if(qty&&rate&&approxMoney(qty.value,rate.value,amount.value)){valid=true;explanation=qty.value+' × '+rate.value+' ≈ '+amount.value}
     else if(hours&&rate&&approxMoney(hours.value,rate.value,amount.value)){valid=true;explanation=hours.value+' × '+rate.value+' ≈ '+amount.value}
-    else {let ns=spatialRowNumbers(row).filter(n=>n.x<amount.x-20&&n.value>0);outer:for(let i=0;i<ns.length;i++)for(let j=i+1;j<ns.length;j++)if(approxMoney(ns[i].value,ns[j].value,amount.value)){valid=true;explanation=ns[i].value+' × '+ns[j].value+' ≈ '+amount.value;break outer}}
+    else {valid=false;explanation='Locked columns do not explain this amount'}
   }
   let arithmeticQuantity=null;
   if(valid&&amount){
@@ -652,15 +662,15 @@ function savePayslip(){
  let o={usUnits:fieldNumber('aUSUnits'),basic:fieldNumber('aBasic'),us:fieldNumber('aUS'),sundayUnits:fieldNumber('aSundayUnits'),sunday:fieldNumber('aSunday'),otUnits:fieldNumber('aOTUnits'),ot:fieldNumber('aOT'),gross:fieldNumber('aGross'),tax:fieldNumber('aTax'),ni:fieldNumber('aNI'),pen:fieldNumber('aPen'),net:fieldNumber('aNet'),reviewed:true,reviewedAt:new Date().toISOString()};
  // Keep the structured OCR evidence with the saved review. Source/worked hours and payroll quantity remain distinct.
  if(scanEarningsRows&&scanEarningsRows.length)o.earningsRows=scanEarningsRows.map(r=>({kind:r.kind,label:r.label,sourceHours:r.sourceHours??r.hours??null,payQuantity:r.payQuantity??null,rate:r.rate??null,amount:r.amount??null,valid:!!r.valid,otType:r.kind==='ot'?classifyOTType(r).label:null}));
- localStorage.setItem('sphq7_payslip_'+compareMonth.value,JSON.stringify(o));renderComparison();
+ localStorage.setItem('sphq7_payslip_'+compareMonth.value,JSON.stringify(o));scanReviewPending=false;renderComparison();
  const b=document.querySelector('[onclick=\"savePayslip()\"]');if(b){b.textContent='✓ Reviewed payslip saved — Pay Check updated';setTimeout(()=>b.textContent='Confirm reviewed payslip & run Pay Check',2200)}
 }
 function savedRow(a,kind){let rows=(a&&a.earningsRows)||[];return rows.find(r=>r.kind===kind&&r.valid)}
 function sourceHoursFor(a,kind,fallback){let r=savedRow(a,kind);return r&&r.sourceHours!=null?r.sourceHours:fallback}
 
-function loadPayslip(){let o=JSON.parse(localStorage.getItem('sphq7_payslip_'+compareMonth.value)||'{}');if(compareMonth.value==='2026-08'&&!Object.keys(o).length)o=augustTestData();for(let [id,k] of [['aUSUnits','usUnits'],['aBasic','basic'],['aUS','us'],['aSundayUnits','sundayUnits'],['aSunday','sunday'],['aOTUnits','otUnits'],['aOT','ot'],['aGross','gross'],['aTax','tax'],['aNI','ni'],['aPen','pen'],['aNet','net']])document.getElementById(id).value=o[k]??'';renderComparison()}
+function loadPayslip(){scanReviewPending=false;let o=JSON.parse(localStorage.getItem('sphq7_payslip_'+compareMonth.value)||'{}');if(compareMonth.value==='2026-08'&&!Object.keys(o).length)o=augustTestData();for(let [id,k] of [['aUSUnits','usUnits'],['aBasic','basic'],['aUS','us'],['aSundayUnits','sundayUnits'],['aSunday','sunday'],['aOTUnits','otUnits'],['aOT','ot'],['aGross','gross'],['aTax','tax'],['aNI','ni'],['aPen','pen'],['aNet','net']])document.getElementById(id).value=o[k]??'';renderComparison()}
 function pcRow(label,expected,actual,unit=''){let has=actual!==undefined&&actual!==null&&actual!==''&&!Number.isNaN(+actual),diff=has?(+actual-expected):null,ok=has&&Math.abs(diff)<0.02;return `<div class="pc-row"><span class="pc-light ${!has?'pending':ok?'ok':'warn'}">${!has?'…':ok?'✓':'!'}</span><div class="pc-copy"><strong>${label}</strong><small>Expected ${unit==='£'?fmt(expected):expected+unit}${has?' · Paid '+(unit==='£'?fmt(+actual):(+actual)+unit):' · Awaiting payslip'}</small></div><strong class="pc-diff">${diff===null?'—':Math.abs(diff)<0.02?'Match':(diff>0?'+':'')+(unit==='£'?fmt(diff):diff.toFixed(2)+unit)}</strong></div>`}
-function renderComparison(){let pm=compareMonth.value,a=JSON.parse(localStorage.getItem('sphq7_payslip_'+pm)||'{}'),html='';if(pm==='2026-08'){
+function renderComparison(){if(scanReviewPending){comparison.innerHTML='<div class="pc-summary warn"><h3>… New scan awaiting confirmation</h3><p>No Pay Check result is shown for this photo yet. Review the extracted figures, then tap Confirm reviewed payslip & run Pay Check.</p></div>';return}let pm=compareMonth.value,a=JSON.parse(localStorage.getItem('sphq7_payslip_'+pm)||'{}'),html='';if(pm==='2026-08'){
  let exp={basic:2878.67,usUnits:78,us:430.62,sundayUnits:18,sunday:198.75,otUnits:24.58,ot:678.50,gross:4630.34};
  let usSource=sourceHoursFor(a,'us',a.usUnits), sunSource=sourceHoursFor(a,'sunday',a.sundayUnits);
  html+=pcRow('Basic pay',exp.basic,a.basic,'£')+pcRow('Mon–Sat source hours',exp.usUnits,usSource,'h')+pcRow('Mon–Sat unsocial pay',exp.us,a.us,'£')+pcRow('Sunday source hours',exp.sundayUnits,sunSource,'h')+pcRow('Sunday unsocial pay',exp.sunday,a.sunday,'£')+pcRow('OT pay quantity',exp.otUnits,a.otUnits,'qty')+pcRow('OT pay',exp.ot,a.ot,'£')+pcRow('Gross pay',exp.gross,a.gross,'£');
