@@ -1,14 +1,17 @@
-Shift Pay HQ v9.10.3ae DEV — iPhone Scanner Candidate
+Shift Pay HQ v9.10.3af DEV — iPhone Review + Pay Check Bridge
 
-Built from verified v9.10.3ad.
+Built directly from the iPhone-tested v9.10.3ae scanner candidate.
 
 Changes:
-- Mobile-first payslip scan/review wording.
-- Developer OCR diagnostics collapsed by default; scanner logic remains available underneath.
-- Pay Check no longer says “No differences found” when required comparison items are missing.
-- Incomplete checks report how many payroll items still need review.
-- Structured source hours, payroll quantity, rate and amount remain separate.
-- Overtime rows remain separate and classifications are only shown when OCR evidence supports them.
-- No core pay-engine, rota or navigation changes.
+- Keeps the proven local iPhone OCR/scanner pipeline unchanged.
+- Simplifies the user-facing review wording.
+- Confirm now saves only reviewed values; blank fields remain blank (never silently become £0/0 units).
+- Saves structured earnings evidence alongside the reviewed payslip.
+- Preserves Source/worked hours separately from Pay quantity, Rate and Amount.
+- Pay Check uses structured Source hours for worked-hours evidence when available.
+- Multiple overtime rows remain separate; no synthetic combined OT figure is invented.
+- Uncertain OCR values remain review-only.
+- Developer OCR/table diagnostics remain collapsed underneath.
 
+No rota, pay-engine or navigation rule changes.
 Package: 8 files plus ocr-data folder.
