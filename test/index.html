@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3as DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3as · Strict Basic Row Lock Fix</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3at DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3at · Physical Earnings Row Separation</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -420,9 +420,36 @@ function collectOcrWords(data){
  walk(data&&data.blocks); if(!out.length)walk(data&&data.words); return out;
 }
 function spatialRows(words){
- let clean=(words||[]).filter(w=>w.text&&w.bbox&&w.conf>=20).map(w=>({...w,cy:(w.bbox.y0+w.bbox.y1)/2,h:Math.max(1,w.bbox.y1-w.bbox.y0)})).sort((a,b)=>a.cy-b.cy||a.bbox.x0-b.bbox.x0),rows=[];
- for(const w of clean){let best=null,dist=Infinity;for(const r of rows){let d=Math.abs(w.cy-r.cy),tol=Math.max(8,Math.min(28,(w.h+r.h)*.7));if(d<=tol&&d<dist){best=r;dist=d}}if(!best){best={words:[],cy:w.cy,h:w.h};rows.push(best)}best.words.push(w);best.cy=best.words.reduce((a,x)=>a+x.cy,0)/best.words.length;best.h=best.words.reduce((a,x)=>a+x.h,0)/best.words.length}
- return rows.map(r=>{r.words.sort((a,b)=>a.bbox.x0-b.bbox.x0);r.text=r.words.map(w=>w.text).join(' ');r.x0=Math.min(...r.words.map(w=>w.bbox.x0));r.x1=Math.max(...r.words.map(w=>w.bbox.x1));return r}).sort((a,b)=>a.cy-b.cy);
+ // 3at: reconstruct physical lines using vertical overlap, not a running mean of word centres.
+ // The old mean could drift into a neighbouring printed line and join unrelated sections.
+ const clean=(words||[]).filter(w=>w.text&&w.bbox&&w.conf>=20).map(w=>({...w,cy:(w.bbox.y0+w.bbox.y1)/2,h:Math.max(1,w.bbox.y1-w.bbox.y0)})).sort((a,b)=>a.cy-b.cy||a.bbox.x0-b.bbox.x0);
+ let lines=[];
+ for(const w of clean){
+   let choices=lines.map(r=>{const overlap=Math.max(0,Math.min(w.bbox.y1,r.y1)-Math.max(w.bbox.y0,r.y0));const minH=Math.min(w.h,r.h);return {r,overlap,dist:Math.abs(w.cy-r.cy),ratio:overlap/minH}}).filter(c=>c.ratio>=.55&&c.dist<=Math.max(5,Math.min(17,Math.min(w.h,c.r.h)*.5))).sort((a,b)=>b.ratio-a.ratio||a.dist-b.dist);
+   let r=choices.length?choices[0].r:null;
+   if(!r){r={words:[],cy:w.cy,h:w.h,y0:w.bbox.y0,y1:w.bbox.y1};lines.push(r)}
+   r.words.push(w);
+   // Median, not running mean: a stray word cannot drag the line into the next one.
+   const mids=r.words.map(x=>x.cy).sort((a,b)=>a-b);r.cy=mids[Math.floor(mids.length/2)];
+   r.y0=Math.max(...r.words.map(x=>x.bbox.y0));r.y1=Math.min(...r.words.map(x=>x.bbox.y1));
+   if(r.y1<=r.y0){r.y0=Math.min(...r.words.map(x=>x.bbox.y0));r.y1=Math.max(...r.words.map(x=>x.bbox.y1))}
+   r.h=Math.max(1,r.y1-r.y0);
+ }
+ const finish=ws=>{ws.sort((a,b)=>a.bbox.x0-b.bbox.x0);return {words:ws,cy:ws.map(w=>w.cy).sort((a,b)=>a-b)[Math.floor(ws.length/2)],h:Math.max(1,Math.min(...ws.map(w=>w.bbox.y1))-Math.max(...ws.map(w=>w.bbox.y0))),text:ws.map(w=>w.text).join(' '),x0:Math.min(...ws.map(w=>w.bbox.x0)),x1:Math.max(...ws.map(w=>w.bbox.x1))}};
+ // Never let two independent payroll sections share a reconstructed row. The split is
+ // diagnostic-only unless each resulting row independently passes the existing strict locks.
+ let result=[];
+ for(const line of lines){
+   const ws=[...line.words].sort((a,b)=>a.bbox.x0-b.bbox.x0);
+   const earnings=ws.filter(w=>/basic|unsoc|sunday|overtime/i.test(fuzzyLabel(w.text)));
+   const deductions=ws.filter(w=>/tax|paye|pension|insurance|deduction|taxable/i.test(fuzzyLabel(w.text)));
+   if(earnings.length&&deductions.length){
+     const ex=Math.min(...earnings.map(w=>w.bbox.x0)),dx=Math.min(...deductions.map(w=>w.bbox.x0));
+     if(Math.abs(ex-dx)>95){const cut=(ex+dx)/2;const left=ws.filter(w=>wordCenterX(w)<cut),right=ws.filter(w=>wordCenterX(w)>=cut);if(left.length&&right.length){result.push(finish(left),finish(right));continue}}
+   }
+   result.push(finish(ws));
+ }
+ return result.sort((a,b)=>a.cy-b.cy||a.x0-b.x0);
 }
 function spatialRowNumbers(row){let vals=[];for(const w of row.words){let chunks=String(w.text).match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];for(const raw of chunks){let v=parseOcrNumber(raw);if(v!==null)vals.push({value:v,x:(w.bbox.x0+w.bbox.x1)/2,raw})}}return vals.sort((a,b)=>a.x-b.x)}
 function splitSpatialRowIntoColumns(row){
@@ -473,7 +500,7 @@ function tableAnchor(rows,region=null){
  let proofs=[];
  for(const row of rows){
    if(region&&!rowInsideEarningsRegion(row,region))continue;
-   let low=fuzzyLabel(row.text);if(!/basic.{0,12}pay|\bbasic\b/.test(low)||/unsocial|unsoc/.test(low))continue;
+   let low=fuzzyLabel(row.text);if(!/basic.{0,12}pay|\bbasic\b/.test(low)||/unsocial|unsoc|income.{0,5}tax|taxable.{0,5}pay|paye|deduction/.test(low))continue;
    let lx=rowLabelX(row,'basic');
    for(const m of arithmeticRowTriplets(row,null)){
      if(m.quantity.x<=lx+35||!(m.quantity.x<m.rate.x&&m.rate.x<m.amount.x))continue;
@@ -571,7 +598,7 @@ function kindFromSpatialRow(row){let low=fuzzyLabel(row.text);
  if(/basic.{0,12}unsocial|\bunsoc\b|unsocial/.test(low))return'us';
  if(/sunday|sun.{0,8}(?:hours|hrs)/.test(low))return'sunday';
  if(/(?:overtime|\bot\b|\bt1\b|t1\s*\/\s*2|time.{0,6}half|s\s*\/\s*t.{0,14}(?:hours|hrs)|(?:hours|hrs).{0,14}s\s*\/\s*t)/.test(low))return'ot';
- if(/basic.{0,10}pay|\bbasic\b/.test(low)&&!/unsoc|unsocial/.test(low))return'basic';return null;
+ if(/basic.{0,10}pay|\bbasic\b/.test(low)&&!/unsoc|unsocial|income.{0,5}tax|taxable.{0,5}pay|paye|deduction/.test(low))return'basic';return null;
 }
 
 function arithmeticRowTriplets(row,anchorX){
@@ -686,9 +713,9 @@ function allNhsEarningsRows(words){
 }
 function basicRowLockDiagnosticHtml(words){
  const rows=spatialRows(words||[]),region=earningsRegionAnchor(rows), candidates=[];
- for(const row of rows){if(region&&region.usable&&!rowInsideEarningsRegion(row,region))continue;let low=fuzzyLabel(row.text);if(!/basic.{0,12}pay|\bbasic\b/.test(low)||/unsocial|unsoc/.test(low))continue;let nums=spatialRowNumbers(row);candidates.push({row,nums,matches:arithmeticRowTriplets(row,null)});}
+ for(const row of rows){if(region&&region.usable&&!rowInsideEarningsRegion(row,region))continue;let low=fuzzyLabel(row.text);if(!/basic.{0,12}pay|\bbasic\b/.test(low)||/unsocial|unsoc|income.{0,5}tax|taxable.{0,5}pay|paye|deduction/.test(low))continue;let nums=spatialRowNumbers(row);candidates.push({row,nums,matches:arithmeticRowTriplets(row,null)});}
  let body=candidates.length?candidates.map((c,i)=>{let nums=c.nums.map(n=>escDbg(n.raw)+' @x'+Math.round(n.x)).join(' · ')||'none';let proofs=c.matches.map(m=>escDbg(m.quantity.raw)+' × '+escDbg(m.rate.raw)+' = '+escDbg(m.amount.raw)+' ['+Math.round(m.quantity.x)+','+Math.round(m.rate.x)+','+Math.round(m.amount.x)+']').join('<br>')||'none';return '<div style="padding:7px 0;border-top:1px solid #e4e7ec"><b>Candidate '+(i+1)+'</b> · y'+Math.round(c.row.cy)+'<br><span style="color:#475467">'+escDbg(c.row.text)+'</span><br><b>Numbers:</b> '+nums+'<br><b>Same-row arithmetic:</b> '+proofs+'</div>'}).join(''):'<p>No in-region Basic Pay row reconstructed.</p>';
- return '<details style="margin-top:12px;background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:10px"><summary style="font-weight:900;cursor:pointer">🔬 3ar Basic Row Lock diagnostic</summary><p style="font-size:12px;color:#475467">Shows only the reconstructed Basic Pay row, number x-coordinates and same-row arithmetic candidates. A Basic amount is auto-filled only when one physical row proves Quantity → Rate → Amount.</p>'+body+'</details>';
+ return '<details style="margin-top:12px;background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:10px"><summary style="font-weight:900;cursor:pointer">🔬 3at Basic Row Lock diagnostic</summary><p style="font-size:12px;color:#475467">Shows only the reconstructed Basic Pay row, number x-coordinates and same-row arithmetic candidates. A Basic amount is auto-filled only when one physical row proves Quantity → Rate → Amount.</p>'+body+'</details>';
 }
 function earningsTableModelHtml(words){
  scanEarningsRows=allNhsEarningsRows(words);
