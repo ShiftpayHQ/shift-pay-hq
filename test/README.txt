@@ -1,11 +1,1 @@
-Shift Pay HQ v9.10.3at DEV — Physical Earnings Row Separation
-
-Built from v9.10.3as. Scanner-only patch.
-
-- Reconstructs OCR lines with vertical overlap and median baselines instead of a drifting running average.
-- Splits spatially separate earnings and deductions labels on a shared scan line for diagnostics.
-- Rejects mixed Basic Pay / tax or deduction rows even if OCR still merges them.
-- Preserves strict printed earnings region, semantic column and same-row arithmetic gates; uncertain amounts stay blank.
-- No payroll rules, rota, pay check, or timeline changes.
-
-Test with the same sideways payslip. A blank Basic Pay is safer than an invented amount.
+Shift Pay HQ v9.10.3au DEV — earnings-column crop OCR. Upload extracted files into /test/ only. Full-page OCR and a separate earnings-only crop are compared; the crop is used only when it has stronger labelled-row/header evidence. Printed column ownership and same-row arithmetic safety gates remain. No figures are preloaded or guessed. Test with a clear, redacted payslip.
