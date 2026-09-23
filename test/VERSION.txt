@@ -1,2 +1,2 @@
-v9.10.3ao DEV
-Printed Column Ownership
+v9.10.3ap DEV
+Earnings Table Geometry
