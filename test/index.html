@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3av DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3av · Physical Earnings Row Separation</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3aw DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3aw · Physical Earnings Row Separation</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -802,6 +802,28 @@ function earningsRowInspectorHtml(words){
  return '<details style="margin-top:12px;background:#f8fafc;border:2px solid #667085;border-radius:10px;padding:10px"><summary style="cursor:pointer;font-weight:900">🔬 Earnings Row Inspector · '+labelled.length+' labelled candidates</summary><p style="font-size:12px;color:#475467">Diagnostic only. Geometry mode: <b>'+geo.mode+'</b>. Columns: Hours x≈'+Math.round(geo.unitsX||0)+' ('+geo.sources.hours+') · Pay qty x≈'+Math.round(geo.quantityX||0)+' ('+geo.sources.quantity+') · Rate x≈'+Math.round(geo.rateX||0)+' ('+geo.sources.rate+') · Amount x≈'+Math.round(geo.amountX||0)+' ('+geo.sources.amount+'). OCR table headings detected: '+geo.header.count+'. Semantic confidence: <b>'+geo.semanticConfidence+'</b>. Hours means source/worked hours; Pay qty is kept as a distinct payroll quantity. Green means same-row arithmetic is explainable; red means it is not. Nothing here is saved.</p>'+cards+'</details>';
 }
 function escDbg(v){return String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]||c))}
+// 3aw: coordinate-based matching is diagnostic until real-device row geometry is verified.
+// Both strips are OCRed from the SAME earnings crop. Their bounding boxes are translated
+// into crop coordinates; never align OCR text streams by their reading order.
+function coordinateEarningsDiagnostic(descriptionWords,numericWords,cropWidth,descriptionFraction=.43,numericStart=.40){
+ const labels=spatialRows((descriptionWords||[]).map(w=>({...w,bbox:{...w.bbox}})))
+   .filter(r=>/basic|sunday|unsoc|o\s*\/?\s*t|paiaw|plain/i.test(fuzzyLabel(r.text)))
+   .filter(r=>r.cy>0);
+ const nums=spatialRows((numericWords||[]).map(w=>({...w,bbox:{...w.bbox,x0:w.bbox.x0+numericStart*cropWidth,x1:w.bbox.x1+numericStart*cropWidth}})));
+ const html=[];let matched=0;
+ for(const label of labels.slice(0,12)){
+   const labelH=Math.max(8,Math.min(35,Math.max(...label.words.map(w=>w.bbox.y1-w.bbox.y0))));
+   const candidates=nums.map(r=>({r,dy:Math.abs(r.cy-label.cy)})).filter(o=>o.dy<=Math.max(12,labelH*.75)).sort((a,b)=>a.dy-b.dy);
+   // A line with two equally close candidates is ambiguous, never combine them.
+   const choice=candidates.length&&(!candidates[1]||candidates[1].dy-candidates[0].dy>Math.max(3,labelH*.2))?candidates[0]:null;
+   const numbers=choice?spatialRowNumbers(choice.r).filter(n=>n.x>=descriptionFraction*cropWidth*.90&&n.x<cropWidth*.99):[];
+   if(choice)matched++;
+   const money=numbers.filter(n=>n.x>=cropWidth*.78),rate=numbers.filter(n=>n.x>=cropWidth*.65&&n.x<cropWidth*.80),qty=numbers.filter(n=>n.x>=cropWidth*.52&&n.x<cropWidth*.69);
+   const proofs=[];for(const q of qty)for(const rt of rate)for(const a of money)if(q.x<rt.x&&rt.x<a.x&&approxMoney(q.value,rt.value,a.value))proofs.push(q.raw+' × '+rt.raw+' = '+a.raw);
+   html.push('<div style="padding:7px 0;border-top:1px solid #d0d5dd"><b>'+escDbg(label.text)+'</b> · y '+Math.round(label.cy)+'<br>'+ (choice?'Matched numeric y '+Math.round(choice.r.cy)+' (Δ '+Math.round(choice.dy)+')':'No unambiguous numeric row')+'<br>Numbers: '+(numbers.map(n=>escDbg(n.raw)+' @'+Math.round(n.x/cropWidth*100)+'%').join(' · ')||'none')+'<br>Same-row column proof: '+(proofs.map(escDbg).join(' · ')||'none')+'</div>');
+ }
+ return {matched,total:labels.length,html:'<details style="margin-top:12px;padding:10px;border:1px solid #d0d5dd;border-radius:10px"><summary>3aw coordinate-matched earnings rows · '+matched+'/'+labels.length+' aligned</summary><p style="font-size:12px;color:#475467">Description and numeric strips are aligned by original crop y-coordinates, not OCR reading order. A row is diagnostic only until its printed column and arithmetic checks pass. No fields are populated from this diagnostic.</p>'+ (html.join('')||'<p>No earnings descriptions located in the description strip.</p>')+'</details>'};
+}
 function ocrDebugHtml(words,rawText){let rows=spatialRows(words||[]),interesting=rows.filter(r=>/(basic|unsoc|sunday|overtime|time|gross|net|paye|tax|pension|national|insurance|nhs|pay)/i.test(r.text)||spatialRowNumbers(r).length>=2).slice(0,80);let rowHtml=interesting.map((r,i)=>{let nums=spatialRowNumbers(r).map(n=>n.value+'@x'+Math.round(n.x)).join(' | ');return '<div style=\"padding:5px 0;border-bottom:1px solid #e4e7ec\"><b>R'+(i+1)+'</b> y='+Math.round(r.cy)+' x='+Math.round(r.x0)+'–'+Math.round(r.x1)+'<br><span>'+escDbg(r.text)+'</span>'+(nums?'<br><small>numbers: '+escDbg(nums)+'</small>':'')+'</div>'}).join('');let raw=String(rawText||'').split(/\n+/).filter(x=>x.trim()).slice(0,100).join('\n');return '<details style=\"margin-top:12px;background:#f8fafc;border:1px solid #d0d5dd;border-radius:10px;padding:10px\"><summary style=\"cursor:pointer;font-weight:800\">Developer OCR debug · '+(words||[]).length+' words · '+rows.length+' reconstructed rows</summary><p style=\"font-size:12px;color:#475467\">Temporary diagnostic view. Coordinates are from the enhanced upright payslip used by OCR.</p><div style=\"max-height:330px;overflow:auto;font:12px ui-monospace,monospace\">'+(rowHtml||'<i>No coordinate rows returned.</i>')+'</div><details style=\"margin-top:8px\"><summary>Raw OCR text</summary><pre style=\"white-space:pre-wrap;max-height:260px;overflow:auto;font-size:11px\">'+escDbg(raw)+'</pre></details></details>'}
 
 async function loadScanImage(file){return await new Promise((resolve,reject)=>{let im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=URL.createObjectURL(file)})}
@@ -824,7 +846,7 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
  // 3au: Read the printed earnings table independently of deductions and cumulative totals.
  // Coordinates in this dedicated crop belong to one earnings region only; do not merge
  // OCR words from differently scaled images or use a value from another column.
- let spatialWords=fullPageWords,earningsCropDiagnostic='Dedicated earnings crop unavailable',earningsCropPreview='',earningsColumnDiagnostic='Column scan not run';
+ let spatialWords=fullPageWords,earningsCropDiagnostic='Dedicated earnings crop unavailable',earningsCropPreview='',earningsColumnDiagnostic='Column scan not run',coordinateDiagnostic='';
  try{
    scanProgressTitle.textContent='Reading earnings columns separately…';
    const earningsCrop=cropRegion(ocrScore(t2)>ocrScore(t1)?binary:normal,0,.08,.465,.59);
@@ -836,17 +858,17 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
    earningsCropPreview=earningsCrop.toDataURL('image/jpeg',.78);
    // Independent left/right OCR: identify whether labels and numbers survive the crop.
    // Strip coordinates are local to earningsCrop, never mixed with full-page coordinates.
-   let columnNotes=[];
+   let columnNotes=[],descriptionWords=[],numericWords=[];
    for(const [columnName,x0,x1] of [['description',0,.43],['numeric columns',.40,1]]){
      try{
        const strip=cropRegion(earningsCrop,x0,0,x1,1);
        const stripRead=await worker.recognize(strip,{}, {text:true,blocks:true});
-       const stripWords=collectOcrWords(stripRead&&stripRead.data);
+       const stripWords=collectOcrWords(stripRead&&stripRead.data);if(columnName==='description')descriptionWords=stripWords;else numericWords=stripWords;
        const stripText=(stripRead&&stripRead.data&&stripRead.data.text)||'';
        columnNotes.push(columnName+': '+stripWords.length+' words; sample: '+stripText.replace(/\s+/g,' ').slice(0,260));
      }catch(columnError){columnNotes.push(columnName+': OCR failed ('+String(columnError&&columnError.message||columnError)+')')}
    }
-   earningsColumnDiagnostic=columnNotes.join(' | ');
+   earningsColumnDiagnostic=columnNotes.join(' | ');coordinateDiagnostic=coordinateEarningsDiagnostic(descriptionWords,numericWords,earningsCrop.width).html;
    const cropWords=collectOcrWords(earningsRead&&earningsRead.data);
    const cropModel=geometryValidatedRows(cropWords),fullModel=geometryValidatedRows(fullPageWords);
    const cropScore=cropModel.labelled.length*10+(cropModel.headerLock?.usable?20:0);
@@ -854,7 +876,7 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
    if(cropScore>fullScore&&cropModel.labelled.length)spatialWords=cropWords;
    earningsCropDiagnostic='Dedicated earnings crop: '+cropWords.length+' words, '+cropModel.labelled.length+' labelled rows; full page: '+fullPageWords.length+' words, '+fullModel.labelled.length+' labelled rows. Using '+(spatialWords===cropWords?'earnings crop':'full-page evidence')+'.';
  }catch(cropError){earningsCropDiagnostic='Dedicated earnings crop failed; full-page fallback: '+String(cropError&&cropError.message||cropError);try{await worker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});}catch(_){}}
- let spatial=applySpatialEarnings(spatialWords,found),hits=Object.entries(found).filter(([k,v])=>v!==null&&v!==undefined);scanProgressBar.style.width='100%';scanProgressTitle.textContent='Scan complete — review your payslip';if(hits.length){scanFound.innerHTML='<strong>'+hits.length+' possible figures found:</strong> '+hits.map(([k])=>scanLabels[k]).join(', ')+'.<div class="scan-warning">Cropped, rotated and enhanced locally. Green earnings rows require a labelled row, printed column semantics and same-row arithmetic consistency. Arithmetic-only lane guesses are diagnostic and never auto-fill fields. Source Hours are kept separate from Pay quantity, Rate and Amount; arithmetic may validate Pay quantity × Rate without changing Source Hours. If the row cannot be proved, it stays blank. Amber totals still need checking against the payslip.</div>';scanTitle.textContent='Payslip scanned — review what we found'}else{scanFound.innerHTML='<strong>OCR completed, but no payroll values passed the safety checks.</strong><div class="scan-warning">The image was cropped, rotated and enhanced. Nothing has been guessed; a closer/clearer photo may be needed.</div>';scanTitle.textContent='Photo read — manual entry needed'}scanFound.insertAdjacentHTML('beforeend','<details style="margin-top:12px;padding:10px;border:1px solid #d0d5dd;border-radius:10px"><summary>3av earnings crop and column diagnostic</summary><p>'+escDbg(earningsCropDiagnostic)+'</p><p>Actual earnings OCR crop (on-device preview):</p>'+(earningsCropPreview?'<img alt="Earnings crop" src="'+earningsCropPreview+'" style="width:100%;height:auto">':'<p>Crop unavailable</p>')+'<p>'+escDbg(earningsColumnDiagnostic)+'</p></details>');scanFound.insertAdjacentHTML('beforeend',earningsTableModelHtml(spatialWords));applyResolvedReview();scanFound.insertAdjacentHTML('beforeend',componentResolverHtml());scanFound.insertAdjacentHTML('beforeend',earningsRowInspectorHtml(spatialWords));scanFound.insertAdjacentHTML('beforeend',ocrDebugHtml(spatialWords,text));scanCopy.textContent='Nothing is saved until you tap Confirm reviewed payslip & run Pay Check.'}catch(e){console.error(e);scanProgressTitle.textContent='OCR failed';scanProgressBar.style.width='0';let msg=(e&&e.message)?e.message:String(e);scanFound.innerHTML='<strong>Scanner diagnostic:</strong> '+String(msg).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))+'<div class="scan-warning">No payroll figures have been guessed.</div>';scanTitle.textContent='Photo added — review manually';scanCopy.textContent='Automatic reading stopped before payroll matching. The error above identifies the failing OCR layer.';}}
+ let spatial=applySpatialEarnings(spatialWords,found),hits=Object.entries(found).filter(([k,v])=>v!==null&&v!==undefined);scanProgressBar.style.width='100%';scanProgressTitle.textContent='Scan complete — review your payslip';if(hits.length){scanFound.innerHTML='<strong>'+hits.length+' possible figures found:</strong> '+hits.map(([k])=>scanLabels[k]).join(', ')+'.<div class="scan-warning">Cropped, rotated and enhanced locally. Green earnings rows require a labelled row, printed column semantics and same-row arithmetic consistency. Arithmetic-only lane guesses are diagnostic and never auto-fill fields. Source Hours are kept separate from Pay quantity, Rate and Amount; arithmetic may validate Pay quantity × Rate without changing Source Hours. If the row cannot be proved, it stays blank. Amber totals still need checking against the payslip.</div>';scanTitle.textContent='Payslip scanned — review what we found'}else{scanFound.innerHTML='<strong>OCR completed, but no payroll values passed the safety checks.</strong><div class="scan-warning">The image was cropped, rotated and enhanced. Nothing has been guessed; a closer/clearer photo may be needed.</div>';scanTitle.textContent='Photo read — manual entry needed'}scanFound.insertAdjacentHTML('beforeend','<details style="margin-top:12px;padding:10px;border:1px solid #d0d5dd;border-radius:10px"><summary>3aw earnings crop and column diagnostic</summary><p>'+escDbg(earningsCropDiagnostic)+'</p><p>Actual earnings OCR crop (on-device preview):</p>'+(earningsCropPreview?'<img alt="Earnings crop" src="'+earningsCropPreview+'" style="width:100%;height:auto">':'<p>Crop unavailable</p>')+'<p>'+escDbg(earningsColumnDiagnostic)+'</p></details>');if(coordinateDiagnostic)scanFound.insertAdjacentHTML('beforeend',coordinateDiagnostic);scanFound.insertAdjacentHTML('beforeend',earningsTableModelHtml(spatialWords));applyResolvedReview();scanFound.insertAdjacentHTML('beforeend',componentResolverHtml());scanFound.insertAdjacentHTML('beforeend',earningsRowInspectorHtml(spatialWords));scanFound.insertAdjacentHTML('beforeend',ocrDebugHtml(spatialWords,text));scanCopy.textContent='Nothing is saved until you tap Confirm reviewed payslip & run Pay Check.'}catch(e){console.error(e);scanProgressTitle.textContent='OCR failed';scanProgressBar.style.width='0';let msg=(e&&e.message)?e.message:String(e);scanFound.innerHTML='<strong>Scanner diagnostic:</strong> '+String(msg).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))+'<div class="scan-warning">No payroll figures have been guessed.</div>';scanTitle.textContent='Photo added — review manually';scanCopy.textContent='Automatic reading stopped before payroll matching. The error above identifies the failing OCR layer.';}}
 
 
 

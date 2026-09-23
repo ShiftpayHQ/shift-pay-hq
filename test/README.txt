@@ -1,1 +1,1 @@
-Shift Pay HQ v9.10.3av DEV — earnings crop visibility and independent description/numeric-column OCR diagnostic. The image is processed locally; preview is transient. No payroll values are inferred from diagnostic-only column OCR. Deploy extracted contents to /test/ only. Root remains untouched.
+Shift Pay HQ v9.10.3aw DEV — coordinate-based earnings row diagnostic using separately OCRed description and numeric strips, with printed-column and same-row arithmetic evidence. Diagnostic-only: never autofills payroll data. Local-only OCR. Deploy contents to /test/ only.
