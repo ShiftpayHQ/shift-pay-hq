@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3ax DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3ax · Isolated Numeric Row OCR</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3ay DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3ay · Isolated Numeric Row OCR</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -896,6 +896,32 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
      coordinateDiagnostic+='<details style="margin-top:12px;padding:10px;border:1px solid #d0d5dd;border-radius:10px"><summary>3ax isolated numeric-line OCR · '+rowCards.length+' rows</summary><p style="font-size:12px;color:#475467">Each numeric line is re-read in isolation at the description’s physical y-position. This is diagnostic only; no payroll fields are populated from these readings.</p>'+rowCards.join('')+'</details>';
    }catch(lineError){coordinateDiagnostic+='<p style="font-size:12px;color:#b54708">Isolated row OCR unavailable: '+escDbg(lineError?.message||lineError)+'</p>'}
    finally{await worker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});}
+   // 3ay: The iPhone evidence shows the numeric baseline is above the label baseline.
+   // OCR a narrow horizontal numeric strip at two physical offsets, enlarged 2x.
+   // Limit to three labelled rows to keep the diagnostic responsive on iPhone.
+   // These results NEVER enter extractPayslipText, applySpatialEarnings or form fields.
+   try{
+     const labels=spatialRows(descriptionWords).filter(r=>/basic|sunday|unsoc/i.test(fuzzyLabel(r.text))).slice(0,3);
+     const diagnostics=[];
+     await worker.setParameters({tessedit_pageseg_mode:'7',tessedit_char_whitelist:'0123456789. ',preserve_interword_spaces:'1'});
+     for(const label of labels){
+       const trials=[];
+       for(const offset of [-12,0]){
+         const cy=Math.round(label.cy+offset),height=27,y0=Math.max(0,cy-Math.floor(height/2));
+         const x0=Math.round(earningsCrop.width*.405),w=Math.round(earningsCrop.width*.565);
+         const line=document.createElement('canvas');line.width=w*2;line.height=height*2;
+         const ctx=line.getContext('2d',{willReadFrequently:true});ctx.imageSmoothingEnabled=false;
+         ctx.drawImage(earningsCrop,x0,y0,w,height,0,0,line.width,line.height);
+         const rr=await worker.recognize(line,{}, {text:true,blocks:true});
+         const raw=String(rr?.data?.text||'').replace(/\s+/g,' ').trim();
+         const words=collectOcrWords(rr?.data);
+         trials.push({offset,raw,words:words.length,preview:label===labels[0]&&offset===-12?line.toDataURL('image/jpeg',.76):''});
+       }
+       diagnostics.push('<div style="padding:8px 0;border-top:1px solid #d0d5dd"><b>'+escDbg(label.text)+'</b> · label y '+Math.round(label.cy)+'<br>'+trials.map(t=>'numeric baseline '+(t.offset>=0?'+':'')+t.offset+': '+escDbg(t.raw||'(no text)')+' · '+t.words+' words'+(t.preview?'<br><img alt="First isolated numeric strip" src="'+t.preview+'" style="width:100%;height:auto;image-rendering:auto">':'')).join('<br>')+'</div>');
+     }
+     coordinateDiagnostic+='<details open style="margin-top:12px;padding:10px;border:1px solid #d0d5dd;border-radius:10px"><summary>3ay numeric baseline and column diagnostic · '+diagnostics.length+' rows</summary><p style="font-size:12px;color:#475467">Physical numeric strip, 2× enlarged, tested at label baseline and 12px above. This diagnostic never fills or saves payroll figures.</p>'+diagnostics.join('')+'</details>';
+   }catch(baselineError){coordinateDiagnostic+='<p style="color:#b54708">3ay numeric baseline diagnostic unavailable: '+escDbg(baselineError?.message||baselineError)+'</p>'}
+   finally{await worker.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:'',preserve_interword_spaces:'1'});}
    const cropWords=collectOcrWords(earningsRead&&earningsRead.data);
    const cropModel=geometryValidatedRows(cropWords),fullModel=geometryValidatedRows(fullPageWords);
    const cropScore=cropModel.labelled.length*10+(cropModel.headerLock?.usable?20:0);
