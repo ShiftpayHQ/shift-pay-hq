@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3az DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3az · Individual Earnings Cell OCR</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3ba DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3ba · Validated Cell Resolver</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -922,31 +922,82 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
      coordinateDiagnostic+='<details open style="margin-top:12px;padding:10px;border:1px solid #d0d5dd;border-radius:10px"><summary>3ay numeric baseline and column diagnostic · '+diagnostics.length+' rows</summary><p style="font-size:12px;color:#475467">Physical numeric strip, 2× enlarged, tested at label baseline and 12px above. This diagnostic never fills or saves payroll figures.</p>'+diagnostics.join('')+'</details>';
    }catch(baselineError){coordinateDiagnostic+='<p style="color:#b54708">3ay numeric baseline diagnostic unavailable: '+escDbg(baselineError?.message||baselineError)+'</p>'}
    finally{await worker.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:'',preserve_interword_spaces:'1'});}
-   // 3az: independent printed-cell diagnostic. The image, label, source-hours,
-   // paid-quantity, rate and amount are never merged into a single OCR line.
-   // The physical x lanes are fractions of the *earnings crop* shown above.
-   // All output is diagnostic only: do not pass it into found or review fields.
+   // 3ba: validated individual-cell resolver.
+   // Each physical cell is read independently using several tightly bounded OCR passes.
+   // Enhancement rows are VERIFIED only when Pay quantity × Rate rounds to the independently
+   // read Amount. Basic Pay uses an amount-only resolver because this layout does not print a
+   // Basic quantity/rate on the same row. Verified values may prefill review fields, but nothing
+   // is saved until the user confirms the payslip.
    try{
      const labels=spatialRows(descriptionWords).filter(r=>/basic|sunday|unsoc/i.test(fuzzyLabel(r.text))).slice(0,3);
-     const lanes=[['Source hours',.425,.575],['Pay quantity',.565,.705],['Rate',.695,.835],['Amount',.825,.985]];
-     const cellCards=[];
+     // Keep Amount away from the right-hand deduction/code column seen in the diagnostic image.
+     const lanes=[['Source hours',.425,.555],['Pay quantity',.565,.685],['Rate',.700,.815],['Amount',.825,.945]];
+     const parseNums=t=>String(t||'').replace(/,/g,'.').match(/\d+(?:\.\d+)?/g)?.map(Number).filter(Number.isFinite)||[];
+     async function readCell(left,right,y0,y1,name,expected){
+       const variants=[];
+       const trims=name==='Amount'?[0,.012,.022]:[0,.006];
+       for(const trim of trims){
+         const l=Math.round(earningsCrop.width*(left+trim)),r=Math.round(earningsCrop.width*(right-trim));
+         if(r<=l+4)continue;
+         for(const mode of ['plain','contrast']){
+           const cell=document.createElement('canvas');cell.width=(r-l)*4;cell.height=(y1-y0)*4;
+           const ctx=cell.getContext('2d',{willReadFrequently:true});ctx.imageSmoothingEnabled=true;
+           ctx.drawImage(earningsCrop,l,y0,r-l,y1-y0,0,0,cell.width,cell.height);
+           if(mode==='contrast'){
+             const im=ctx.getImageData(0,0,cell.width,cell.height),d=im.data;
+             for(let i=0;i<d.length;i+=4){let g=.299*d[i]+.587*d[i+1]+.114*d[i+2];g=g<170?Math.max(0,(g-90)*1.8):Math.min(255,180+(g-170)*1.5);d[i]=d[i+1]=d[i+2]=g}ctx.putImageData(im,0,0);
+           }
+           const rr=await worker.recognize(cell,{}, {text:true});
+           const raw=String(rr?.data?.text||'').replace(/\s+/g,' ').trim(),nums=parseNums(raw);
+           for(const value of nums)variants.push({value,raw,preview:cell.toDataURL('image/jpeg',.72),trim,mode});
+           if(!nums.length)variants.push({value:null,raw,preview:cell.toDataURL('image/jpeg',.72),trim,mode});
+         }
+       }
+       const plausible=v=>v!=null&&v>=0&&(name==='Rate'?v<200:name==='Amount'?v<15000:v<1000);
+       let valid=variants.filter(v=>plausible(v.value));
+       let best=null;
+       if(expected!=null&&valid.length)best=valid.sort((a,b)=>Math.abs(a.value-expected)-Math.abs(b.value-expected))[0];
+       else if(valid.length){
+         // Prefer repeated readings across independent crop/preprocess variants.
+         valid.forEach(v=>v.votes=valid.filter(x=>Math.abs(x.value-v.value)<.006).length);
+         best=valid.sort((a,b)=>b.votes-a.votes||String(a.raw).length-String(b.raw).length)[0];
+       }
+       return {best,variants};
+     }
+     const cards=[],verified=[];
      await worker.setParameters({tessedit_pageseg_mode:'7',tessedit_char_whitelist:'0123456789., ',preserve_interword_spaces:'1'});
      for(const label of labels){
-       const cy=Math.round(label.cy-9),y0=Math.max(0,cy-19),y1=Math.min(earningsCrop.height,cy+19);
-       const cells=[];
+       const kind=labelKind(label.text),cy=Math.round(label.cy-9),y0=Math.max(0,cy-17),y1=Math.min(earningsCrop.height,cy+17);
+       const reads={};
        for(const [name,x0,x1] of lanes){
-         const left=Math.round(earningsCrop.width*x0),right=Math.round(earningsCrop.width*x1);
-         const cell=document.createElement('canvas');cell.width=(right-left)*3;cell.height=(y1-y0)*3;
-         const ctx=cell.getContext('2d',{willReadFrequently:true});ctx.imageSmoothingEnabled=true;
-         ctx.drawImage(earningsCrop,left,y0,right-left,y1-y0,0,0,cell.width,cell.height);
-         const read=await worker.recognize(cell,{}, {text:true});
-         const raw=String(read?.data?.text||'').replace(/\s+/g,' ').trim();
-         cells.push('<div style="margin:5px 0"><b>'+escDbg(name)+'</b> · '+escDbg(raw||'(unreadable)')+'<br><img alt="'+escDbg(name)+' OCR cell" src="'+cell.toDataURL('image/jpeg',.68)+'" style="max-width:100%;max-height:64px;object-fit:contain"></div>');
+         if(kind==='basic'&&name!=='Amount')continue;
+         reads[name]=await readCell(x0,x1,y0,y1,name,null);
        }
-       cellCards.push('<div style="padding:9px 0;border-top:1px solid #d0d5dd"><b>'+escDbg(label.text)+'</b> · label y '+Math.round(label.cy)+' · cell centre y '+cy+cells.join('')+'</div>');
+       const q=reads['Pay quantity']?.best?.value,r=reads['Rate']?.best?.value;
+       const expected=(q!=null&&r!=null)?+(q*r).toFixed(2):null;
+       if(kind!=='basic'&&expected!=null)reads['Amount']=await readCell(.825,.945,y0,y1,'Amount',expected);
+       const amount=reads['Amount']?.best?.value;
+       let ok=false,reason='Needs review';
+       if(kind==='basic'){
+         const vals=(reads['Amount']?.variants||[]).filter(v=>v.value>=500&&v.value<=10000);
+         vals.forEach(v=>v.votes=vals.filter(x=>Math.abs(x.value-v.value)<.011).length);
+         const consensus=vals.sort((a,b)=>b.votes-a.votes)[0];
+         if(consensus&&consensus.votes>=2){reads['Amount'].best=consensus;ok=true;reason='Verified by repeated independent amount reads'}
+         else reason='Basic amount isolated, but independent OCR passes did not agree';
+       }else if(expected!=null&&amount!=null&&Math.abs(amount-expected)<=.015){ok=true;reason='Verified: pay quantity × rate = printed amount'}
+       else if(expected!=null)reason='Arithmetic expects £'+expected.toFixed(2)+'; printed amount OCR still differs';
+       const finalAmount=reads['Amount']?.best?.value;
+       if(ok&&kind&&finalAmount!=null){
+         verified.push({kind,q,r,amount:+finalAmount.toFixed(2),reason});
+         if(kind==='basic'){found.basic=+finalAmount.toFixed(2);ownScanEvidence('basic',found.basic,'3ba-verified-cell');setScanFieldState('aBasic',found.basic,'found')}
+         if(kind==='sunday'){found.sunday=+finalAmount.toFixed(2);ownScanEvidence('sunday',found.sunday,'3ba-verified-cell');setScanFieldState('aSunday',found.sunday,'found');if(q!=null){ownScanEvidence('sundayUnits',q,'3ba-verified-cell');setScanFieldState('aSundayUnits',q,'found')}}
+         if(kind==='us'){found.us=+finalAmount.toFixed(2);ownScanEvidence('us',found.us,'3ba-verified-cell');setScanFieldState('aUS',found.us,'found');if(q!=null){ownScanEvidence('usUnits',q,'3ba-verified-cell');setScanFieldState('aUSUnits',q,'found')}}
+       }
+       const cellHtml=Object.entries(reads).map(([name,rd])=>{let b=rd.best;return '<div style="margin:5px 0"><b>'+escDbg(name)+'</b> · '+(b&&b.value!=null?escDbg(b.value):'(unreadable)')+(b?'<br><img alt="'+escDbg(name)+' OCR cell" src="'+b.preview+'" style="max-width:100%;max-height:64px;object-fit:contain">':'')+'</div>'}).join('');
+       cards.push('<div style="padding:9px 0;border-top:1px solid #d0d5dd"><b>'+escDbg(label.text)+'</b><br><strong style="color:'+(ok?'#067647':'#b54708')+'">'+(ok?'✓ VERIFIED':'⚠ NEEDS REVIEW')+'</strong> · '+escDbg(reason)+(expected!=null?'<br><small>Arithmetic target: £'+expected.toFixed(2)+'</small>':'')+cellHtml+'</div>');
      }
-     coordinateDiagnostic+='<details open style="margin-top:12px;padding:10px;border:1px solid #d0d5dd;border-radius:10px"><summary>3az individual earnings-cell OCR · '+cellCards.length+' rows</summary><p style="font-size:12px;color:#475467">Each printed numeric column is cropped and enlarged independently, with vertical padding. These readings are diagnostic only and never fill or save payslip fields. Compare each cell preview with its OCR text.</p>'+cellCards.join('')+'</details>';
-   }catch(cellError){coordinateDiagnostic+='<p style="color:#b54708">3az individual-cell diagnostic unavailable: '+escDbg(cellError?.message||cellError)+'</p>'}
+     coordinateDiagnostic+='<details open style="margin-top:12px;padding:10px;border:2px solid #175cd3;border-radius:10px"><summary style="font-weight:900">3ba Validated Cell Resolver · '+verified.length+'/'+labels.length+' verified</summary><p style="font-size:12px;color:#475467">Each printed cell is cropped independently with tighter Amount boundaries and multiple OCR passes. Enhancement rows turn green only when independently read Pay quantity × Rate agrees with the Amount to the penny. Basic Pay uses repeated amount-read consensus. Verified values can prefill the review form, but are never saved until you confirm the payslip.</p>'+cards.join('')+'</details>';
+   }catch(cellError){coordinateDiagnostic+='<p style="color:#b54708">3ba validated-cell resolver unavailable: '+escDbg(cellError?.message||cellError)+'</p>'}
    finally{await worker.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:'',preserve_interword_spaces:'1'});}
    const cropWords=collectOcrWords(earningsRead&&earningsRead.data);
    const cropModel=geometryValidatedRows(cropWords),fullModel=geometryValidatedRows(fullPageWords);

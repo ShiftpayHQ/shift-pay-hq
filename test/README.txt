@@ -1,1 +1,3 @@
-Shift Pay HQ v9.10.3az DEV — individual earnings-cell OCR diagnostic. Upload extracted contents to /test/ only; keep live root unchanged. Scan a payslip and expand 3az individual earnings-cell OCR. No diagnostic earnings figures are saved or auto-filled.
+Shift Pay HQ v9.10.3ba DEV — Validated Cell Resolver
+
+Development build. Tightens individual earnings-cell crops, performs multiple OCR passes, validates enhancement rows using pay quantity × rate = amount, and uses repeated-read consensus for Basic Pay. Verified values only prefill review fields; nothing is saved until user confirmation.
