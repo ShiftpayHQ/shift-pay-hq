@@ -1,12 +1,12 @@
-Shift Pay HQ v9.10.3aq DEV — Earnings Region Anchor
+Shift Pay HQ v9.10.3ar DEV — Strict Basic Row Lock
 
-Built directly from v9.10.3ap.
+Built from v9.10.3aq. Scanner-only surgical change.
 
-Scanner change only:
-- Proves the printed earnings/pay-and-allowances region before interpreting earnings values.
-- Deductions/totals outside that region cannot become Basic, unsocial or overtime evidence.
-- Printed Quantity/Rate/Amount geometry remains required for automatic earnings ownership.
-- Basic Pay must be inside the proved earnings region and in the proved Amount lane.
-- Existing review-before-save and no-guess safety gates remain in place.
+Changes:
+- Basic Pay can auto-fill only when the same reconstructed physical row proves Quantity × Rate = Amount.
+- Removed the nearby-amount fallback that allowed a deductions figure such as PAYE to become Basic Pay.
+- Requires left-to-right Basic label → Quantity → Rate → Amount geometry.
+- Adds a temporary Basic Row Lock diagnostic with row text, number x-coordinates and arithmetic candidates.
+- If proof is missing or ambiguous, Basic stays blank.
 
-No Rota, Pay, payroll timeline or Pay Check rules were intentionally changed.
+Rota, Pay, Pay Check, payroll timeline and existing scanner safety gates are otherwise unchanged.

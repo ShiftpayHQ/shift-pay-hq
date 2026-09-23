@@ -1,2 +1,2 @@
-v9.10.3aq DEV
-Earnings Region Anchor
+v9.10.3ar DEV
+Strict Basic Row Lock
