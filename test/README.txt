@@ -1,1 +1,1 @@
-Shift Pay HQ v9.10.3aw DEV — coordinate-based earnings row diagnostic using separately OCRed description and numeric strips, with printed-column and same-row arithmetic evidence. Diagnostic-only: never autofills payroll data. Local-only OCR. Deploy contents to /test/ only.
+Shift Pay HQ v9.10.3ax DEV — isolated numeric row OCR diagnostic. Upload all files and ocr-data folder into /test/. Live root remains unchanged. No values are auto-filled from the new diagnostic.

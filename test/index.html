@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3aw DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3aw · Physical Earnings Row Separation</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3ax DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3ax · Isolated Numeric Row OCR</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -869,6 +869,33 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
      }catch(columnError){columnNotes.push(columnName+': OCR failed ('+String(columnError&&columnError.message||columnError)+')')}
    }
    earningsColumnDiagnostic=columnNotes.join(' | ');coordinateDiagnostic=coordinateEarningsDiagnostic(descriptionWords,numericWords,earningsCrop.width).html;
+   // 3ax: Re-read each numeric row in isolation, using the physical label position.
+   // This avoids Tesseract PSM 6 merging multiple adjacent printed numeric lines.
+   // Independent OCR evidence is diagnostic only until column ownership is proven.
+   try{
+     const labels=spatialRows(descriptionWords).filter(r=>/basic|sunday|unsoc|o\s*\/?\s*t|paiaw|plain/i.test(fuzzyLabel(r.text))).slice(0,9);
+     const rowCards=[];
+     await worker.setParameters({tessedit_pageseg_mode:'7',preserve_interword_spaces:'1'});
+     for(let i=0;i<labels.length;i++){
+       const label=labels[i];
+       const prev=i?labels[i-1].cy:label.cy-32,next=i+1<labels.length?labels[i+1].cy:label.cy+32;
+       const half=Math.max(9,Math.min(20,(label.cy-prev)*.43,(next-label.cy)*.43));
+       // Read both a tight line and a slightly lower shifted line for baseline skew.
+       const probes=[];
+       for(const shift of [0,-5]){
+         const y0=Math.max(0,Math.round(label.cy-half+shift)),y1=Math.min(earningsCrop.height,Math.round(label.cy+half+shift));
+         const line=document.createElement('canvas');line.width=Math.round(earningsCrop.width*.61);line.height=Math.max(1,y1-y0);
+         line.getContext('2d').drawImage(earningsCrop,Math.round(earningsCrop.width*.39),y0,line.width,line.height,0,0,line.width,line.height);
+         const result=await worker.recognize(line,{}, {text:true,blocks:true});
+         const raw=String(result?.data?.text||'').replace(/\s+/g,' ').trim();
+         const words=collectOcrWords(result?.data);
+         probes.push({raw,words:words.length,shift});
+       }
+       rowCards.push('<div style="padding:7px 0;border-top:1px solid #d0d5dd"><b>'+escDbg(label.text)+'</b> · label y '+Math.round(label.cy)+'<br>'+probes.map(q=>'offset '+q.shift+': '+escDbg(q.raw||'(no text)')+' · '+q.words+' words').join('<br>')+'</div>');
+     }
+     coordinateDiagnostic+='<details style="margin-top:12px;padding:10px;border:1px solid #d0d5dd;border-radius:10px"><summary>3ax isolated numeric-line OCR · '+rowCards.length+' rows</summary><p style="font-size:12px;color:#475467">Each numeric line is re-read in isolation at the description’s physical y-position. This is diagnostic only; no payroll fields are populated from these readings.</p>'+rowCards.join('')+'</details>';
+   }catch(lineError){coordinateDiagnostic+='<p style="font-size:12px;color:#b54708">Isolated row OCR unavailable: '+escDbg(lineError?.message||lineError)+'</p>'}
+   finally{await worker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});}
    const cropWords=collectOcrWords(earningsRead&&earningsRead.data);
    const cropModel=geometryValidatedRows(cropWords),fullModel=geometryValidatedRows(fullPageWords);
    const cropScore=cropModel.labelled.length*10+(cropModel.headerLock?.usable?20:0);
