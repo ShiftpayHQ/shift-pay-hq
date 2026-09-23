@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3ar DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3ar · Strict Basic Row Lock</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3as DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3as · Strict Basic Row Lock Fix</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -687,7 +687,7 @@ function allNhsEarningsRows(words){
 function basicRowLockDiagnosticHtml(words){
  const rows=spatialRows(words||[]),region=earningsRegionAnchor(rows), candidates=[];
  for(const row of rows){if(region&&region.usable&&!rowInsideEarningsRegion(row,region))continue;let low=fuzzyLabel(row.text);if(!/basic.{0,12}pay|\bbasic\b/.test(low)||/unsocial|unsoc/.test(low))continue;let nums=spatialRowNumbers(row);candidates.push({row,nums,matches:arithmeticRowTriplets(row,null)});}
- let body=candidates.length?candidates.map((c,i)=>{let nums=c.nums.map(n=>esc(n.raw)+' @x'+Math.round(n.x)).join(' · ')||'none';let proofs=c.matches.map(m=>esc(m.quantity.raw)+' × '+esc(m.rate.raw)+' = '+esc(m.amount.raw)+' ['+Math.round(m.quantity.x)+','+Math.round(m.rate.x)+','+Math.round(m.amount.x)+']').join('<br>')||'none';return '<div style="padding:7px 0;border-top:1px solid #e4e7ec"><b>Candidate '+(i+1)+'</b> · y'+Math.round(c.row.cy)+'<br><span style="color:#475467">'+esc(c.row.text)+'</span><br><b>Numbers:</b> '+nums+'<br><b>Same-row arithmetic:</b> '+proofs+'</div>'}).join(''):'<p>No in-region Basic Pay row reconstructed.</p>';
+ let body=candidates.length?candidates.map((c,i)=>{let nums=c.nums.map(n=>escDbg(n.raw)+' @x'+Math.round(n.x)).join(' · ')||'none';let proofs=c.matches.map(m=>escDbg(m.quantity.raw)+' × '+escDbg(m.rate.raw)+' = '+escDbg(m.amount.raw)+' ['+Math.round(m.quantity.x)+','+Math.round(m.rate.x)+','+Math.round(m.amount.x)+']').join('<br>')||'none';return '<div style="padding:7px 0;border-top:1px solid #e4e7ec"><b>Candidate '+(i+1)+'</b> · y'+Math.round(c.row.cy)+'<br><span style="color:#475467">'+escDbg(c.row.text)+'</span><br><b>Numbers:</b> '+nums+'<br><b>Same-row arithmetic:</b> '+proofs+'</div>'}).join(''):'<p>No in-region Basic Pay row reconstructed.</p>';
  return '<details style="margin-top:12px;background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:10px"><summary style="font-weight:900;cursor:pointer">🔬 3ar Basic Row Lock diagnostic</summary><p style="font-size:12px;color:#475467">Shows only the reconstructed Basic Pay row, number x-coordinates and same-row arithmetic candidates. A Basic amount is auto-filled only when one physical row proves Quantity → Rate → Amount.</p>'+body+'</details>';
 }
 function earningsTableModelHtml(words){

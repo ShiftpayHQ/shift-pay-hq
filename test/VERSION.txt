@@ -1,2 +1,1 @@
-v9.10.3ar DEV
-Strict Basic Row Lock
+v9.10.3as DEV
