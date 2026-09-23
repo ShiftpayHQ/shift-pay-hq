@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3ay DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3ay · Isolated Numeric Row OCR</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3az DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3az · Individual Earnings Cell OCR</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -921,6 +921,32 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
      }
      coordinateDiagnostic+='<details open style="margin-top:12px;padding:10px;border:1px solid #d0d5dd;border-radius:10px"><summary>3ay numeric baseline and column diagnostic · '+diagnostics.length+' rows</summary><p style="font-size:12px;color:#475467">Physical numeric strip, 2× enlarged, tested at label baseline and 12px above. This diagnostic never fills or saves payroll figures.</p>'+diagnostics.join('')+'</details>';
    }catch(baselineError){coordinateDiagnostic+='<p style="color:#b54708">3ay numeric baseline diagnostic unavailable: '+escDbg(baselineError?.message||baselineError)+'</p>'}
+   finally{await worker.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:'',preserve_interword_spaces:'1'});}
+   // 3az: independent printed-cell diagnostic. The image, label, source-hours,
+   // paid-quantity, rate and amount are never merged into a single OCR line.
+   // The physical x lanes are fractions of the *earnings crop* shown above.
+   // All output is diagnostic only: do not pass it into found or review fields.
+   try{
+     const labels=spatialRows(descriptionWords).filter(r=>/basic|sunday|unsoc/i.test(fuzzyLabel(r.text))).slice(0,3);
+     const lanes=[['Source hours',.425,.575],['Pay quantity',.565,.705],['Rate',.695,.835],['Amount',.825,.985]];
+     const cellCards=[];
+     await worker.setParameters({tessedit_pageseg_mode:'7',tessedit_char_whitelist:'0123456789., ',preserve_interword_spaces:'1'});
+     for(const label of labels){
+       const cy=Math.round(label.cy-9),y0=Math.max(0,cy-19),y1=Math.min(earningsCrop.height,cy+19);
+       const cells=[];
+       for(const [name,x0,x1] of lanes){
+         const left=Math.round(earningsCrop.width*x0),right=Math.round(earningsCrop.width*x1);
+         const cell=document.createElement('canvas');cell.width=(right-left)*3;cell.height=(y1-y0)*3;
+         const ctx=cell.getContext('2d',{willReadFrequently:true});ctx.imageSmoothingEnabled=true;
+         ctx.drawImage(earningsCrop,left,y0,right-left,y1-y0,0,0,cell.width,cell.height);
+         const read=await worker.recognize(cell,{}, {text:true});
+         const raw=String(read?.data?.text||'').replace(/\s+/g,' ').trim();
+         cells.push('<div style="margin:5px 0"><b>'+escDbg(name)+'</b> · '+escDbg(raw||'(unreadable)')+'<br><img alt="'+escDbg(name)+' OCR cell" src="'+cell.toDataURL('image/jpeg',.68)+'" style="max-width:100%;max-height:64px;object-fit:contain"></div>');
+       }
+       cellCards.push('<div style="padding:9px 0;border-top:1px solid #d0d5dd"><b>'+escDbg(label.text)+'</b> · label y '+Math.round(label.cy)+' · cell centre y '+cy+cells.join('')+'</div>');
+     }
+     coordinateDiagnostic+='<details open style="margin-top:12px;padding:10px;border:1px solid #d0d5dd;border-radius:10px"><summary>3az individual earnings-cell OCR · '+cellCards.length+' rows</summary><p style="font-size:12px;color:#475467">Each printed numeric column is cropped and enlarged independently, with vertical padding. These readings are diagnostic only and never fill or save payslip fields. Compare each cell preview with its OCR text.</p>'+cellCards.join('')+'</details>';
+   }catch(cellError){coordinateDiagnostic+='<p style="color:#b54708">3az individual-cell diagnostic unavailable: '+escDbg(cellError?.message||cellError)+'</p>'}
    finally{await worker.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:'',preserve_interword_spaces:'1'});}
    const cropWords=collectOcrWords(earningsRead&&earningsRead.data);
    const cropModel=geometryValidatedRows(cropWords),fullModel=geometryValidatedRows(fullPageWords);

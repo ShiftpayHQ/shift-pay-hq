@@ -1,1 +1,1 @@
-Shift Pay HQ v9.10.3ay DEV — diagnostic numeric baseline and column reading for Basic, Sunday and Unsocial rows. Upload all files including ocr-data to /test/. Live root unchanged. No earnings fields auto-filled by this diagnostic.
+Shift Pay HQ v9.10.3az DEV — individual earnings-cell OCR diagnostic. Upload extracted contents to /test/ only; keep live root unchanged. Scan a payslip and expand 3az individual earnings-cell OCR. No diagnostic earnings figures are saved or auto-filled.
