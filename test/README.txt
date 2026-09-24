@@ -1,3 +1,12 @@
-Shift Pay HQ v9.10.3be DEV — Full Earnings Row Resolver
+Shift Pay HQ v9.10.3bf DEV — OT Row Classification + Safe Aggregation
 
-Extends the proven v9.10.3bd independent Rate + Amount reader across the remaining overtime earnings rows. Each OT row must independently read Pay quantity, Rate and printed Amount and pass same-row arithmetic before verification. Verified OT rows are then totalled for the review form. No arithmetic-derived OCR guesses and nothing is saved until user confirmation.
+Changes from v9.10.3be:
+- Keeps the proven Basic / Sunday / Mon–Sat cell-reading logic.
+- Stops treating PAIAW/unknown OCR labels as overtime.
+- Classifies only explicit overtime labels as OT.
+- Never publishes a partial overtime total.
+- OT review fields are populated only when the complete detected OT set is independently verified.
+- Ambiguous earnings rows force OT totals to remain blank for manual review.
+- Nothing is saved until the user confirms the reviewed payslip.
+
+Deploy to /test/ only. Keep the live root untouched.
