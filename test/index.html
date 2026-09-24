@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf · OT Classification + Safe Aggregation</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf1 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf1 · OT Classification Hotfix</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -380,7 +380,7 @@ function resetScanReview(){
 }
 function markScanField(id,state){let st=document.getElementById(id+'State');if(!st)return;if(state==='found'){st.textContent='Found ✓ — check against payslip';st.className='scan-field-state found'}else if(state==='check'){st.textContent='Needs checking';st.className='scan-field-state check'}else{st.textContent='Not found — enter manually';st.className='scan-field-state missing'}}
 function setScanField(id,value){let el=document.getElementById(id);if(!el)return;let n=(value===null||value===undefined||value==='')?null:Number(value);if(n!==null&&Number.isFinite(n)&&n>=0){el.value=n.toFixed(2);markScanField(id,'found')}else{el.value='';markScanField(id,'missing')}}
-async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3bf OT Classification + Safe Aggregation started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
+async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3bf1 OT Classification Hotfix started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
 function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
 function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
 function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}
@@ -1019,9 +1019,9 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
        const finalAmount=reads['Amount']?.best?.value;
        if(ok&&kind&&finalAmount!=null){
          verified.push({kind,q,r,amount:+finalAmount.toFixed(2),reason,label:label.text,explicitOT,ambiguousPayroll});
-         if(kind==='basic'){found.basic=+finalAmount.toFixed(2);ownScanEvidence('basic',found.basic,'3bf-verified-cell');setScanFieldState('aBasic',found.basic,'found')}
-         if(kind==='sunday'){found.sunday=+finalAmount.toFixed(2);ownScanEvidence('sunday',found.sunday,'3bf-verified-cell');setScanFieldState('aSunday',found.sunday,'found');if(q!=null){ownScanEvidence('sundayUnits',q,'3bf-verified-cell');setScanFieldState('aSundayUnits',q,'found')}}
-         if(kind==='us'){found.us=+finalAmount.toFixed(2);ownScanEvidence('us',found.us,'3bf-verified-cell');setScanFieldState('aUS',found.us,'found');if(q!=null){ownScanEvidence('usUnits',q,'3bf-verified-cell');setScanFieldState('aUSUnits',q,'found')}}
+         if(kind==='basic'){found.basic=+finalAmount.toFixed(2);ownScanEvidence('basic',found.basic,'3bf1-verified-cell');setScanFieldState('aBasic',found.basic,'found')}
+         if(kind==='sunday'){found.sunday=+finalAmount.toFixed(2);ownScanEvidence('sunday',found.sunday,'3bf1-verified-cell');setScanFieldState('aSunday',found.sunday,'found');if(q!=null){ownScanEvidence('sundayUnits',q,'3bf1-verified-cell');setScanFieldState('aSundayUnits',q,'found')}}
+         if(kind==='us'){found.us=+finalAmount.toFixed(2);ownScanEvidence('us',found.us,'3bf1-verified-cell');setScanFieldState('aUS',found.us,'found');if(q!=null){ownScanEvidence('usUnits',q,'3bf1-verified-cell');setScanFieldState('aUSUnits',q,'found')}}
        }
        const cellHtml=Object.entries(reads).map(([name,rd])=>{let b=rd.best;return '<div style="margin:5px 0"><b>'+escDbg(name)+'</b> · '+(b&&b.value!=null?escDbg(b.value):'(unreadable)')+(b?'<br><img alt="'+escDbg(name)+' OCR cell" src="'+b.preview+'" style="max-width:100%;max-height:64px;object-fit:contain">':'')+'</div>'}).join('');
        cards.push('<div style="padding:9px 0;border-top:1px solid #d0d5dd"><b>'+escDbg(label.text)+'</b><br><strong style="color:'+(ok?'#067647':'#b54708')+'">'+(ok?'✓ VERIFIED':'⚠ NEEDS REVIEW')+'</strong> · '+escDbg(reason)+(expected!=null?'<br><small>Arithmetic target: £'+expected.toFixed(2)+'</small>':'')+cellHtml+'</div>');
@@ -1037,18 +1037,18 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
      if(otComplete){
        const otAmount=+verifiedOT.reduce((n,v)=>n+(v.amount||0),0).toFixed(2);
        const otQty=+verifiedOT.reduce((n,v)=>n+(v.q||0),0).toFixed(2);
-       found.ot=otAmount;ownScanEvidence('ot',otAmount,'3bf-verified-complete-ot-set');setScanFieldState('aOT',otAmount,'found');
-       if(verifiedOT.every(v=>v.q!=null)){ownScanEvidence('otUnits',otQty,'3bf-verified-complete-ot-set');setScanFieldState('aOTUnits',otQty,'found')}
+       found.ot=otAmount;ownScanEvidence('ot',otAmount,'3bf1-verified-complete-ot-set');setScanFieldState('aOT',otAmount,'found');
+       if(verifiedOT.every(v=>v.q!=null)){ownScanEvidence('otUnits',otQty,'3bf1-verified-complete-ot-set');setScanFieldState('aOTUnits',otQty,'found')}
      }else{
        found.ot=null;
-       clearScanEvidence('ot'); clearScanEvidence('otUnits');
+       ownScanEvidence('ot',null,'3bf1-incomplete-ot-set'); ownScanEvidence('otUnits',null,'3bf1-incomplete-ot-set');
        setScanFieldState('aOT',null,'missing'); setScanFieldState('aOTUnits',null,'missing');
      }
      const otSummary=otComplete
        ? '<div style="padding:9px 0;border-top:1px solid #d0d5dd"><b>✓ Complete verified overtime set</b><br>Pay quantity '+verifiedOT.reduce((n,v)=>n+(v.q||0),0).toFixed(2)+' · Amount £'+verifiedOT.reduce((n,v)=>n+(v.amount||0),0).toFixed(2)+'</div>'
        : '<div style="padding:9px 0;border-top:1px solid #d0d5dd;color:#b54708"><b>⚠ Overtime total withheld</b><br>'+verifiedOT.length+' verified OT row(s), '+detectedOT.length+' explicit OT label(s)'+(ambiguousEarnings.length?' and '+ambiguousEarnings.length+' ambiguous earnings label(s)':'')+'. Shift Pay HQ will not total a partial OT set.</div>';
-     coordinateDiagnostic+='<details open style="margin-top:12px;padding:10px;border:2px solid #175cd3;border-radius:10px"><summary style="font-weight:900">3bf OT Classification + Safe Aggregation · '+verified.length+'/'+labels.length+' verified</summary><p style="font-size:12px;color:#475467">Basic, Sunday and Mon–Sat unsocial keep the proven independent cell reader. Overtime is now classified separately. OCR noise such as PAIAW is never assumed to be overtime. The review form receives an overtime total only when every explicit overtime row is independently verified and there are no ambiguous earnings labels that could hide another OT row. Partial verified OT rows stay diagnostic-only.</p>'+cards.join('')+otSummary+'</details>';
-   }catch(cellError){coordinateDiagnostic+='<p style="color:#b54708">3bf OT classification resolver unavailable: '+escDbg(cellError?.message||cellError)+'</p>'}
+     coordinateDiagnostic+='<details open style="margin-top:12px;padding:10px;border:2px solid #175cd3;border-radius:10px"><summary style="font-weight:900">3bf1 OT Classification + Safe Aggregation · '+verified.length+'/'+labels.length+' verified</summary><p style="font-size:12px;color:#475467">Basic, Sunday and Mon–Sat unsocial keep the proven independent cell reader. Overtime is now classified separately. OCR noise such as PAIAW is never assumed to be overtime. The review form receives an overtime total only when every explicit overtime row is independently verified and there are no ambiguous earnings labels that could hide another OT row. Partial verified OT rows stay diagnostic-only.</p>'+cards.join('')+otSummary+'</details>';
+   }catch(cellError){coordinateDiagnostic+='<p style="color:#b54708">3bf1 OT classification resolver unavailable: '+escDbg(cellError?.message||cellError)+'</p>'}
    finally{await worker.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:'',preserve_interword_spaces:'1'});}
    const cropWords=collectOcrWords(earningsRead&&earningsRead.data);
    const cropModel=geometryValidatedRows(cropWords),fullModel=geometryValidatedRows(fullPageWords);
@@ -1061,7 +1061,7 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
  // 3bf owns verified evidence after the legacy spatial pass, so a weaker legacy parse cannot erase it.
  if(precisionVerified.length){
    const one=k=>precisionVerified.find(v=>v.kind===k);
-   for(const [k,id,uid] of [['basic','aBasic',null],['sunday','aSunday','aSundayUnits'],['us','aUS','aUSUnits']]){const v=one(k);if(v){found[k]=v.amount;ownScanEvidence(k,v.amount,'3bf-verified-cell');setScanFieldState(id,v.amount,'found');if(uid&&v.q!=null){ownScanEvidence(k+'Units',v.q,'3bf-verified-cell');setScanFieldState(uid,v.q,'found')}}}
+   for(const [k,id,uid] of [['basic','aBasic',null],['sunday','aSunday','aSundayUnits'],['us','aUS','aUSUnits']]){const v=one(k);if(v){found[k]=v.amount;ownScanEvidence(k,v.amount,'3bf1-verified-cell');setScanFieldState(id,v.amount,'found');if(uid&&v.q!=null){ownScanEvidence(k+'Units',v.q,'3bf1-verified-cell');setScanFieldState(uid,v.q,'found')}}}
    const ots=precisionVerified.filter(v=>v.kind==='ot');
    // 3bf deliberately does not rebuild OT from a partial set after the legacy pass.
    // The completeness-gated result above is the only path allowed to populate OT.

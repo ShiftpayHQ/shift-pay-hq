@@ -1,12 +1,10 @@
-Shift Pay HQ v9.10.3bf DEV — OT Row Classification + Safe Aggregation
+Shift Pay HQ v9.10.3bf1 DEV — OT Classification Hotfix
 
-Changes from v9.10.3be:
-- Keeps the proven Basic / Sunday / Mon–Sat cell-reading logic.
-- Stops treating PAIAW/unknown OCR labels as overtime.
-- Classifies only explicit overtime labels as OT.
-- Never publishes a partial overtime total.
-- OT review fields are populated only when the complete detected OT set is independently verified.
-- Ambiguous earnings rows force OT totals to remain blank for manual review.
-- Nothing is saved until the user confirms the reviewed payslip.
+Hotfix only:
+- Fixes the v9.10.3bf runtime error: clearScanEvidence is not defined.
+- Keeps the proven OCR/cell reader unchanged.
+- Keeps PAIAW/ambiguous labels out of overtime classification.
+- Keeps incomplete OT sets out of the review form.
+- No payroll figures are saved until the user confirms the payslip.
 
 Deploy to /test/ only. Keep the live root untouched.
