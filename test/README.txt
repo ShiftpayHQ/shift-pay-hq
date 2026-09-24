@@ -1,3 +1,3 @@
-Shift Pay HQ v9.10.3bb DEV — Safe Verification Resolver
+Shift Pay HQ v9.10.3bc DEV
 
-Development build. Tightens individual earnings-cell crops, performs multiple OCR passes, validates enhancement rows using pay quantity × rate = amount, and uses repeated-read consensus for Basic Pay. Verified values only prefill review fields; nothing is saved until user confirmation.
+Amount Precision Reader. Re-reads the already-located Amount cell with multiple independent preprocessing passes. OCR consensus is established independently of payroll arithmetic; arithmetic validates only after OCR consensus. Zero-false-green policy remains in force.

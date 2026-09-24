@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bb DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bb · Safe Verification Resolver</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bc DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bc · Amount Precision Reader</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -922,7 +922,7 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
      coordinateDiagnostic+='<details open style="margin-top:12px;padding:10px;border:1px solid #d0d5dd;border-radius:10px"><summary>3ay numeric baseline and column diagnostic · '+diagnostics.length+' rows</summary><p style="font-size:12px;color:#475467">Physical numeric strip, 2× enlarged, tested at label baseline and 12px above. This diagnostic never fills or saves payroll figures.</p>'+diagnostics.join('')+'</details>';
    }catch(baselineError){coordinateDiagnostic+='<p style="color:#b54708">3ay numeric baseline diagnostic unavailable: '+escDbg(baselineError?.message||baselineError)+'</p>'}
    finally{await worker.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:'',preserve_interword_spaces:'1'});}
-   // 3bb: safe verification resolver. Zero false-green policy.
+   // 3bc: amount precision reader. Zero false-green policy.
    // Each physical cell is read independently using several tightly bounded OCR passes.
    // Enhancement rows are VERIFIED only when Pay quantity × Rate rounds to the independently
    // read Amount. Basic Pay uses an amount-only resolver because this layout does not print a
@@ -934,35 +934,50 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
      const lanes=[['Source hours',.425,.555],['Pay quantity',.565,.685],['Rate',.700,.815],['Amount',.815,.975]];
      const parseNums=t=>String(t||'').replace(/,/g,'.').match(/\d+(?:\.\d+)?/g)?.map(Number).filter(Number.isFinite)||[];
      async function readCell(left,right,y0,y1,name,expected){
+       // 3bc deliberately does NOT choose the Amount reading closest to arithmetic.
+       // OCR must establish the printed value independently; arithmetic validates afterwards.
        const variants=[];
-       const trims=name==='Amount'?[0,.006,.012]:[0,.006];
+       const trims=name==='Amount'?[0,.004,.008,.012]:[0,.006];
+       const scales=name==='Amount'?[4,6]:[4];
+       const modes=name==='Amount'?['plain','contrast','threshold']:['plain','contrast'];
        for(const trim of trims){
          const l=Math.round(earningsCrop.width*(left+trim)),r=Math.round(earningsCrop.width*(right-trim));
          if(r<=l+4)continue;
-         for(const mode of ['plain','contrast']){
-           const cell=document.createElement('canvas');cell.width=(r-l)*4;cell.height=(y1-y0)*4;
-           const ctx=cell.getContext('2d',{willReadFrequently:true});ctx.imageSmoothingEnabled=true;
-           ctx.drawImage(earningsCrop,l,y0,r-l,y1-y0,0,0,cell.width,cell.height);
-           if(mode==='contrast'){
-             const im=ctx.getImageData(0,0,cell.width,cell.height),d=im.data;
-             for(let i=0;i<d.length;i+=4){let g=.299*d[i]+.587*d[i+1]+.114*d[i+2];g=g<170?Math.max(0,(g-90)*1.8):Math.min(255,180+(g-170)*1.5);d[i]=d[i+1]=d[i+2]=g}ctx.putImageData(im,0,0);
+         for(const scale of scales){
+           for(const mode of modes){
+             const padY=name==='Amount'?5:2;
+             const yy0=Math.max(0,y0-padY),yy1=Math.min(earningsCrop.height,y1+padY);
+             const cell=document.createElement('canvas');cell.width=(r-l)*scale;cell.height=(yy1-yy0)*scale;
+             const ctx=cell.getContext('2d',{willReadFrequently:true});ctx.imageSmoothingEnabled=true;
+             ctx.drawImage(earningsCrop,l,yy0,r-l,yy1-yy0,0,0,cell.width,cell.height);
+             if(mode!=='plain'){
+               const im=ctx.getImageData(0,0,cell.width,cell.height),d=im.data;
+               for(let i=0;i<d.length;i+=4){
+                 let g=.299*d[i]+.587*d[i+1]+.114*d[i+2];
+                 if(mode==='contrast') g=Math.max(0,Math.min(255,(g-128)*1.65+128));
+                 else g=g<178?0:255;
+                 d[i]=d[i+1]=d[i+2]=g;
+               }ctx.putImageData(im,0,0);
+             }
+             const rr=await worker.recognize(cell,{}, {text:true});
+             const raw=String(rr?.data?.text||'').replace(/\s+/g,' ').trim();
+             // Currency cells require a complete decimal token. Do not turn partial 875.57/430.0 into proof.
+             const tokenMatches=raw.replace(/,/g,'.').match(/\d+(?:\.\d{1,2})?/g)||[];
+             const nums=tokenMatches.map(Number).filter(Number.isFinite);
+             for(const value of nums)variants.push({value,raw,token:tokenMatches[nums.indexOf(value)]||'',preview:cell.toDataURL('image/jpeg',.72),trim,mode,scale});
+             if(!nums.length)variants.push({value:null,raw,token:'',preview:cell.toDataURL('image/jpeg',.72),trim,mode,scale});
            }
-           const rr=await worker.recognize(cell,{}, {text:true});
-           const raw=String(rr?.data?.text||'').replace(/\s+/g,' ').trim(),nums=parseNums(raw);
-           for(const value of nums)variants.push({value,raw,preview:cell.toDataURL('image/jpeg',.72),trim,mode});
-           if(!nums.length)variants.push({value:null,raw,preview:cell.toDataURL('image/jpeg',.72),trim,mode});
          }
        }
        const plausible=v=>v!=null&&v>=0&&(name==='Rate'?v<200:name==='Amount'?v<15000:v<1000);
        let valid=variants.filter(v=>plausible(v.value));
-       let best=null;
-       if(expected!=null&&valid.length)best=valid.sort((a,b)=>Math.abs(a.value-expected)-Math.abs(b.value-expected))[0];
-       else if(valid.length){
-         // Prefer repeated readings across independent crop/preprocess variants.
-         valid.forEach(v=>v.votes=valid.filter(x=>Math.abs(x.value-v.value)<.006).length);
-         best=valid.sort((a,b)=>b.votes-a.votes||String(a.raw).length-String(b.raw).length)[0];
-       }
-       return {best,variants};
+       if(name==='Amount') valid=valid.filter(v=>/^\d{1,5}\.\d{2}$/.test(String(v.token||'')));
+       // Independent consensus: group exact-to-penny readings. Expected arithmetic is never used to rank OCR.
+       valid.forEach(v=>v.votes=valid.filter(x=>Math.abs(x.value-v.value)<.005).length);
+       valid.sort((a,b)=>(b.votes||0)-(a.votes||0)||String(b.token||'').length-String(a.token||'').length);
+       let best=valid[0]||null;
+       const consensus=best&&best.votes>=2;
+       return {best,variants,consensus,votes:best?.votes||0};
      }
      const cards=[],verified=[];
      await worker.setParameters({tessedit_pageseg_mode:'7',tessedit_char_whitelist:'0123456789., ',preserve_interword_spaces:'1'});
@@ -982,12 +997,12 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
          // Basic has no same-row arithmetic proof. Repeated OCR agreement alone is NOT enough.
          // Require at least two independent reads containing a complete currency-shaped token
          // (4+ pounds digits and exactly 2 pence digits) before it can even become a candidate.
-         const complete=(reads['Amount']?.variants||[]).filter(v=>/\b\d{4,5}\.\d{2}\b/.test(String(v.raw||''))&&v.value>=1000&&v.value<=10000);
-         complete.forEach(v=>v.votes=complete.filter(x=>Math.abs(x.value-v.value)<.011).length);
+         const complete=(reads['Amount']?.variants||[]).filter(v=>/^\d{4,5}\.\d{2}$/.test(String(v.token||''))&&v.value>=1000&&v.value<=10000);
+         complete.forEach(v=>v.votes=complete.filter(x=>Math.abs(x.value-v.value)<.005).length);
          const consensus=complete.sort((a,b)=>b.votes-a.votes)[0];
-         if(consensus&&consensus.votes>=2){reads['Amount'].best=consensus;ok=true;reason='Verified by repeated complete currency reads'}
+         if(consensus&&consensus.votes>=2){reads['Amount'].best=consensus;ok=true;reason='Verified by independent complete amount consensus ('+consensus.votes+' reads)'}
          else {ok=false;reason='Basic amount needs review — repeated OCR agreement is not sufficient without a complete £x,xxx.xx read';}
-       }else if(expected!=null&&amount!=null&&Math.abs(amount-expected)<=.015){ok=true;reason='Verified: pay quantity × rate = independently read printed amount'}
+       }else if(expected!=null&&amount!=null&&reads['Amount']?.consensus&&Math.abs(amount-expected)<=.005){ok=true;reason='Verified: independent printed-amount consensus agrees with pay quantity × rate'}
        else if(expected!=null){
          const exp=expected.toFixed(2),raw=String(reads['Amount']?.best?.raw||'').replace(/[^0-9.]/g,'');
          const likely=raw && exp.startsWith(raw.replace(/\.$/,''));
@@ -996,15 +1011,15 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
        const finalAmount=reads['Amount']?.best?.value;
        if(ok&&kind&&finalAmount!=null){
          verified.push({kind,q,r,amount:+finalAmount.toFixed(2),reason});
-         if(kind==='basic'){found.basic=+finalAmount.toFixed(2);ownScanEvidence('basic',found.basic,'3bb-verified-cell');setScanFieldState('aBasic',found.basic,'found')}
-         if(kind==='sunday'){found.sunday=+finalAmount.toFixed(2);ownScanEvidence('sunday',found.sunday,'3bb-verified-cell');setScanFieldState('aSunday',found.sunday,'found');if(q!=null){ownScanEvidence('sundayUnits',q,'3bb-verified-cell');setScanFieldState('aSundayUnits',q,'found')}}
-         if(kind==='us'){found.us=+finalAmount.toFixed(2);ownScanEvidence('us',found.us,'3bb-verified-cell');setScanFieldState('aUS',found.us,'found');if(q!=null){ownScanEvidence('usUnits',q,'3bb-verified-cell');setScanFieldState('aUSUnits',q,'found')}}
+         if(kind==='basic'){found.basic=+finalAmount.toFixed(2);ownScanEvidence('basic',found.basic,'3bc-verified-cell');setScanFieldState('aBasic',found.basic,'found')}
+         if(kind==='sunday'){found.sunday=+finalAmount.toFixed(2);ownScanEvidence('sunday',found.sunday,'3bc-verified-cell');setScanFieldState('aSunday',found.sunday,'found');if(q!=null){ownScanEvidence('sundayUnits',q,'3bc-verified-cell');setScanFieldState('aSundayUnits',q,'found')}}
+         if(kind==='us'){found.us=+finalAmount.toFixed(2);ownScanEvidence('us',found.us,'3bc-verified-cell');setScanFieldState('aUS',found.us,'found');if(q!=null){ownScanEvidence('usUnits',q,'3bc-verified-cell');setScanFieldState('aUSUnits',q,'found')}}
        }
        const cellHtml=Object.entries(reads).map(([name,rd])=>{let b=rd.best;return '<div style="margin:5px 0"><b>'+escDbg(name)+'</b> · '+(b&&b.value!=null?escDbg(b.value):'(unreadable)')+(b?'<br><img alt="'+escDbg(name)+' OCR cell" src="'+b.preview+'" style="max-width:100%;max-height:64px;object-fit:contain">':'')+'</div>'}).join('');
        cards.push('<div style="padding:9px 0;border-top:1px solid #d0d5dd"><b>'+escDbg(label.text)+'</b><br><strong style="color:'+(ok?'#067647':'#b54708')+'">'+(ok?'✓ VERIFIED':'⚠ NEEDS REVIEW')+'</strong> · '+escDbg(reason)+(expected!=null?'<br><small>Arithmetic target: £'+expected.toFixed(2)+'</small>':'')+cellHtml+'</div>');
      }
-     coordinateDiagnostic+='<details open style="margin-top:12px;padding:10px;border:2px solid #175cd3;border-radius:10px"><summary style="font-weight:900">3bb Safe Verification Resolver · '+verified.length+'/'+labels.length+' verified</summary><p style="font-size:12px;color:#475467">Zero-false-green policy: enhancement rows turn green only when Pay quantity × Rate agrees with an independently read printed Amount to the penny. Basic Pay cannot verify from repeated partial OCR alone; it requires repeated complete currency-shaped reads. Truncated Amount OCR may be shown as Likely for review, but never auto-verified. Verified values can prefill the review form, but are never saved until you confirm the payslip.</p>'+cards.join('')+'</details>';
-   }catch(cellError){coordinateDiagnostic+='<p style="color:#b54708">3bb safe-verification resolver unavailable: '+escDbg(cellError?.message||cellError)+'</p>'}
+     coordinateDiagnostic+='<details open style="margin-top:12px;padding:10px;border:2px solid #175cd3;border-radius:10px"><summary style="font-weight:900">3bc Amount Precision Reader · '+verified.length+'/'+labels.length+' verified</summary><p style="font-size:12px;color:#475467">Amount Precision Reader: the Amount cell is enlarged and read through multiple independent crop/contrast/threshold passes. Arithmetic never chooses the OCR result. Enhancement rows turn green only when repeated printed-amount reads agree to the penny and that independent consensus also agrees with Pay quantity × Rate. Basic Pay cannot verify from repeated partial OCR alone; it requires repeated complete currency-shaped reads. Truncated Amount OCR may be shown as Likely for review, but never auto-verified. Verified values can prefill the review form, but are never saved until you confirm the payslip.</p>'+cards.join('')+'</details>';
+   }catch(cellError){coordinateDiagnostic+='<p style="color:#b54708">3bc amount-precision resolver unavailable: '+escDbg(cellError?.message||cellError)+'</p>'}
    finally{await worker.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:'',preserve_interword_spaces:'1'});}
    const cropWords=collectOcrWords(earningsRead&&earningsRead.data);
    const cropModel=geometryValidatedRows(cropWords),fullModel=geometryValidatedRows(fullPageWords);

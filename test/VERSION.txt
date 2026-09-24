@@ -1,2 +1,1 @@
-v9.10.3bb DEV
-Safe Verification Resolver
+v9.10.3bc DEV — Amount Precision Reader
