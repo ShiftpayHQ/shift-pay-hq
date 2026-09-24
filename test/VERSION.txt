@@ -1,1 +1,1 @@
-Shift Pay HQ v9.10.3bf1 DEV — OT Classification Hotfix
+v9.10.3bf2 DEV — Adaptive Column Geometry

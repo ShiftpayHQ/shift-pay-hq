@@ -1,10 +1,4 @@
-Shift Pay HQ v9.10.3bf1 DEV — OT Classification Hotfix
+Shift Pay HQ v9.10.3bf2 DEV
+Adaptive Column Geometry
 
-Hotfix only:
-- Fixes the v9.10.3bf runtime error: clearScanEvidence is not defined.
-- Keeps the proven OCR/cell reader unchanged.
-- Keeps PAIAW/ambiguous labels out of overtime classification.
-- Keeps incomplete OT sets out of the review form.
-- No payroll figures are saved until the user confirms the payslip.
-
-Deploy to /test/ only. Keep the live root untouched.
+Purpose: learn the printed NHS earnings-table columns from their physical header positions, then associate row values by x/y geometry. No September/Band 6 payroll values are hard-coded. Existing 3bf1 safe verification and OT completeness rules remain in place.
