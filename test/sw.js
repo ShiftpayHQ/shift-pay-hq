@@ -1,3 +1,5 @@
-// Shift Pay HQ v9_10_3ba DEV cache cleanup worker.
-self.addEventListener("install", event => { self.skipWaiting(); });
-self.addEventListener("activate", event => { event.waitUntil((async()=>{ const keys=await caches.keys(); await Promise.all(keys.filter(k=>k.startsWith("shift-pay-hq-")).map(k=>caches.delete(k))); await self.registration.unregister(); const cs=await self.clients.matchAll({type:"window",includeUncontrolled:true}); for(const c of cs)c.postMessage({type:"SPHQ_DEV_SW_REMOVED",version:"v9_10_3ba"}); })()); });
+const CACHE='shift-pay-hq-v9-10-3be';
+const ASSETS=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./VERSION.txt','./README.txt','./ocr-data/eng.traineddata.gz'];
+self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
+self.addEventListener('fetch',e=>{e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)))})
