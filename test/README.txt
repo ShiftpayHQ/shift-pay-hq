@@ -1,3 +1,3 @@
-Shift Pay HQ v9.10.3bc DEV
+Shift Pay HQ v9.10.3bd DEV — Precision Rate Reader
 
-Amount Precision Reader. Re-reads the already-located Amount cell with multiple independent preprocessing passes. OCR consensus is established independently of payroll arithmetic; arithmetic validates only after OCR consensus. Zero-false-green policy remains in force.
+Builds on v9.10.3bc. Freezes the Amount Precision Reader and adds independent multi-pass precision OCR for Rate cells. Enhancement rows verify only when a complete x.xxxx rate consensus and independent printed amount consensus agree through payroll arithmetic. No arithmetic-derived OCR values. Nothing is saved until user confirmation.

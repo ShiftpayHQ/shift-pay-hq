@@ -1,1 +1,2 @@
-v9.10.3bc DEV — Amount Precision Reader
+Shift Pay HQ v9.10.3bd DEV
+Precision Rate Reader
