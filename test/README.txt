@@ -1,3 +1,3 @@
-Shift Pay HQ v9.10.3bf4 DEV
+Shift Pay HQ v9.10.3bf5 DEV — Cell-Isolated OCR
 
-Scanner diagnostic build: learns four physical earnings-column cell boundaries from the printed payslip header, then intersects those cells with exclusive earnings-row bands. No Band 6, September, salary, rate or payslip amounts are hard-coded. Review remains mandatory before save.
+Built from v9.10.3bf4. Keeps learned printed header boundaries, then OCRs each earnings value from one exclusive row × column rectangle. Enhancement/OT rows require isolated Pay quantity × Rate = isolated Amount. Unsafe legacy deductions/totals are left blank rather than borrowing earnings values.
