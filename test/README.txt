@@ -1,4 +1,4 @@
-Shift Pay HQ v9.10.3bf2 DEV
-Adaptive Column Geometry
+Shift Pay HQ v9.10.3bf3 DEV
+Row-Bounded Column Geometry
 
-Purpose: learn the printed NHS earnings-table columns from their physical header positions, then associate row values by x/y geometry. No September/Band 6 payroll values are hard-coded. Existing 3bf1 safe verification and OT completeness rules remain in place.
+Purpose: preserve 3bf2 adaptive printed-header column learning, while assigning every labelled earnings line an exclusive vertical row band so OCR values cannot be borrowed from neighbouring rows. Basic Pay may verify from a complete printed Amount cell alone; enhancements and overtime still require same-row arithmetic. No September/Band 6 payroll values are hard-coded. Existing safe review/confirmation behaviour remains in place.

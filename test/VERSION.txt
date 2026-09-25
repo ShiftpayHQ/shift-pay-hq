@@ -1,1 +1,1 @@
-v9.10.3bf2 DEV — Adaptive Column Geometry
+v9.10.3bf3 DEV — Row-Bounded Column Geometry
