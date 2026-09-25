@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf3 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf3 · Row-Bounded Column Geometry</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf4 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf4 · Header Cell Boundaries</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -380,7 +380,7 @@ function resetScanReview(){
 }
 function markScanField(id,state){let st=document.getElementById(id+'State');if(!st)return;if(state==='found'){st.textContent='Found ✓ — check against payslip';st.className='scan-field-state found'}else if(state==='check'){st.textContent='Needs checking';st.className='scan-field-state check'}else{st.textContent='Not found — enter manually';st.className='scan-field-state missing'}}
 function setScanField(id,value){let el=document.getElementById(id);if(!el)return;let n=(value===null||value===undefined||value==='')?null:Number(value);if(n!==null&&Number.isFinite(n)&&n>=0){el.value=n.toFixed(2);markScanField(id,'found')}else{el.value='';markScanField(id,'missing')}}
-async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3bf3 Row-Bounded Geometry started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
+async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3bf4 Header Cell Boundaries started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
 function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
 function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
 function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}
@@ -790,9 +790,10 @@ function applyResolvedReview(){
 }
 
 
-// 3bf3: keep 3bf2's learned printed lanes, but give every labelled earnings row an exclusive vertical band.
-// A numeric token may belong to one earnings row only. Basic Pay may verify from a complete amount cell alone;
-// enhancement / OT rows still require printed lane values plus same-row arithmetic.
+// 3bf4: learn physical column CELLS from the printed header, not a single OCR centre point.
+// The two pre-Rate numeric columns are separated by their printed left-to-right order when OCR
+// cannot reliably distinguish the repeated HOURS / SESSIONS words. Every value must then sit
+// inside both its exclusive row band and its exclusive column cell.
 function adaptiveHeaderGeometry(words){
  const rows=spatialRows(words||[]), labelled=rows.filter(r=>kindFromSpatialRow(r));
  if(!labelled.length)return {usable:false,reason:'No labelled earnings rows'};
@@ -800,42 +801,66 @@ function adaptiveHeaderGeometry(words){
  const headerRows=rows.filter(r=>r.cy<firstY&&r.cy>firstY-520), all=[];
  for(const r of headerRows)for(const w of r.words)all.push({...w,cx:wordCenterX(w),cy:(w.bbox.y0+w.bbox.y1)/2});
  const norm=t=>fuzzyLabel(t).replace(/[^a-z0-9]+/g,' ').trim();
- const lane=(patterns)=>{let h=all.filter(w=>patterns.some(re=>re.test(norm(w.text))));if(!h.length)return null;return h.sort((a,b)=>b.cy-a.cy)[0].cx};
- let hours=lane([/^hours?$/, /^hrs?$/, /^worked$/]), qty=lane([/^sessions?$/, /^units?$/, /^qty$/, /^quantity$/, /^paid$/]), rate=lane([/^rate$/]), amount=lane([/^amount$/, /^amt$/]);
- const headerSemantic=all.filter(w=>/hours?|hrs?|sessions?|units?|paid|rate|amount|amt|worked/.test(norm(w.text)));
- let clusters=[];for(const w of headerSemantic.sort((a,b)=>a.cx-b.cx)){let c=clusters.find(c=>Math.abs(c.x-w.cx)<65);if(!c)clusters.push(c={x:w.cx,ws:[]});c.ws.push(w);c.x=c.ws.reduce((n,z)=>n+z.cx,0)/c.ws.length}
- const ctext=c=>norm(c.ws.map(w=>w.text).join(' ')), findc=re=>{let c=clusters.find(c=>re.test(ctext(c)));return c?c.x:null};
- hours=hours??findc(/hours|hrs|worked/);qty=qty??findc(/sessions|units|paid|qty|quantity/);rate=rate??findc(/rate/);amount=amount??findc(/amount|amt/);
- // If the multi-line header collapsed Hours and Units onto the same x, do not pretend they are distinct.
- if(Number.isFinite(hours)&&Number.isFinite(qty)&&Math.abs(hours-qty)<45)hours=null;
- const usable=Number.isFinite(qty)&&Number.isFinite(rate)&&Number.isFinite(amount)&&qty+25<rate&&rate+25<amount;
- return {usable,hours:Number.isFinite(hours)&&hours<qty?hours:null,qty,rate,amount,clusters,reason:usable?'Printed header lanes learned':'Quantity / Rate / Amount headings not all proved'};
+ const sem=all.filter(w=>/^(hours?|hrs?|sessions?|units?|paid|rate|amount|amt|worked)$/.test(norm(w.text)));
+ // Tight x-clustering preserves the two adjacent HOURS/Sessions columns instead of merging them.
+ let clusters=[];
+ for(const w of sem.sort((a,b)=>a.cx-b.cx)){
+   let c=clusters.find(c=>Math.abs(c.x-w.cx)<42);
+   if(!c)clusters.push(c={x:w.cx,ws:[]});
+   c.ws.push(w);c.x=c.ws.reduce((n,z)=>n+z.cx,0)/c.ws.length;
+ }
+ clusters.sort((a,b)=>a.x-b.x);
+ const ctext=c=>norm(c.ws.map(w=>w.text).join(' '));
+ const rateC=clusters.filter(c=>/rate/.test(ctext(c))).sort((a,b)=>b.ws.length-a.ws.length)[0]||null;
+ const amountC=clusters.filter(c=>/amount|amt/.test(ctext(c))).sort((a,b)=>b.ws.length-a.ws.length)[0]||null;
+ let rate=rateC?.x??null, amount=amountC?.x??null;
+ // Printed NHS earnings layout is Description | Hours worked | Units paid | Rate | Amount.
+ // Infer the two repeated pre-rate columns by physical order only; never from payroll values.
+ let pre=clusters.filter(c=>Number.isFinite(rate)&&c.x<rate-35&&/hours|hrs|sessions|units|paid|worked/.test(ctext(c)));
+ // De-duplicate any near-identical remnants after OCR fragmentation.
+ let pre2=[];for(const c of pre){let z=pre2.find(q=>Math.abs(q.x-c.x)<55);if(!z)pre2.push({...c});else if(c.ws.length>z.ws.length)Object.assign(z,c)}
+ pre2.sort((a,b)=>a.x-b.x);
+ let hours=null,qty=null;
+ if(pre2.length>=2){hours=pre2[pre2.length-2].x;qty=pre2[pre2.length-1].x}
+ else if(pre2.length===1){qty=pre2[0].x}
+ // If explicit semantics produce a second column, use them only when they preserve printed order.
+ const explicitWorked=clusters.filter(c=>/worked/.test(ctext(c))&&c.x<(rate??Infinity)).sort((a,b)=>b.x-a.x)[0];
+ const explicitPaid=clusters.filter(c=>/units|paid/.test(ctext(c))&&c.x<(rate??Infinity)).sort((a,b)=>b.x-a.x)[0];
+ if(explicitWorked&&explicitPaid&&explicitWorked.x+35<explicitPaid.x){hours=explicitWorked.x;qty=explicitPaid.x}
+ const centers=[hours,qty,rate,amount];
+ const usable=centers.every(Number.isFinite)&&hours+25<qty&&qty+25<rate&&rate+25<amount;
+ let bounds=null;
+ if(usable){
+   const m01=(hours+qty)/2,m12=(qty+rate)/2,m23=(rate+amount)/2;
+   const gap=Math.max(70,qty-hours);
+   bounds={hours:[hours-gap*.62,m01],qty:[m01,m12],rate:[m12,m23],amount:[m23,amount+(amount-rate)*.70]};
+ }
+ return {usable,hours,qty,rate,amount,bounds,clusters,reason:usable?'Printed header cell boundaries learned':'All four printed earnings columns were not proved'};
 }
 function adaptiveColumnResolve(words){
  const geo=adaptiveHeaderGeometry(words), rows=spatialRows(words||[]), out=[];
  if(!geo.usable)return {geo,rows:out};
  const labelled=rows.filter(r=>kindFromSpatialRow(r)).sort((a,b)=>a.cy-b.cy);
  const nums=[];for(const w of (words||[])){for(const raw of (String(w.text).match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[])){const v=parseOcrNumber(raw);if(v!==null)nums.push({value:v,x:wordCenterX(w),y:(w.bbox.y0+w.bbox.y1)/2,raw,conf:w.conf||0})}}
- const laneXs=[geo.hours,geo.qty,geo.rate,geo.amount].filter(Number.isFinite).sort((a,b)=>a-b);
- const laneBounds=x=>{const i=laneXs.indexOf(x), left=i>0?(laneXs[i-1]+x)/2:x-115, right=i<laneXs.length-1?(x+laneXs[i+1])/2:x+145;return [left,right]};
- const bands=labelled.map((r,i)=>{const prev=i?labelled[i-1].cy:null,next=i<labelled.length-1?labelled[i+1].cy:null;return {top:prev==null?r.cy-24:(prev+r.cy)/2,bottom:next==null?r.cy+24:(r.cy+next)/2}});
- const pick=(i,x,range)=>{if(!Number.isFinite(x))return null;const b=bands[i],[lx,rx]=laneBounds(x);let a=nums.filter(n=>n.value>=range[0]&&n.value<=range[1]&&n.y>=b.top&&n.y<b.bottom&&n.x>=lx&&n.x<rx);a.sort((u,v)=>Math.abs(u.x-x)-Math.abs(v.x-x)||Math.abs(u.y-labelled[i].cy)-Math.abs(v.y-labelled[i].cy)||v.conf-u.conf);return a[0]||null};
- for(let i=0;i<labelled.length;i++){const row=labelled[i],kind=kindFromSpatialRow(row),q=pick(i,geo.qty,[.01,400]),rate=pick(i,geo.rate,[.01,200]),amount=pick(i,geo.amount,[.01,10000]),hours=geo.hours?pick(i,geo.hours,[.01,400]):null;let verified=false,proof='';
+ const bands=labelled.map((r,i)=>{const prev=i?labelled[i-1].cy:null,next=i<labelled.length-1?labelled[i+1].cy:null;return {top:prev==null?r.cy-26:(prev+r.cy)/2,bottom:next==null?r.cy+26:(r.cy+next)/2}});
+ const pick=(i,lane,range)=>{const b=bands[i],lr=geo.bounds?.[lane];if(!lr)return null;let a=nums.filter(n=>n.value>=range[0]&&n.value<=range[1]&&n.y>=b.top&&n.y<b.bottom&&n.x>=lr[0]&&n.x<lr[1]);a.sort((u,v)=>Math.abs(u.y-labelled[i].cy)-Math.abs(v.y-labelled[i].cy)||v.conf-u.conf);return a[0]||null};
+ for(let i=0;i<labelled.length;i++){
+   const row=labelled[i],kind=kindFromSpatialRow(row),hours=pick(i,'hours',[.01,400]),q=pick(i,'qty',[.01,400]),rate=pick(i,'rate',[.01,200]),amount=pick(i,'amount',[.01,10000]);let verified=false,proof='';
    if(kind==='basic'){
-     // Basic is a salary amount row on many NHS payslips; blank hours/units are legitimate.
      verified=!!(amount&&amount.value>=500&&amount.value<10000);
-     proof=verified?'complete amount cell inside Basic row band':'Basic amount cell not proved inside its row band';
+     proof=verified?'printed Amount cell proved inside Basic row + Amount column':'Basic amount cell not proved in its exclusive cell';
    }else{
      verified=!!(q&&rate&&amount&&approxMoney(q.value,rate.value,amount.value));
-     proof=verified?'same-row Pay qty × Rate agrees with Amount':'same-row arithmetic not proved';
+     proof=verified?'exclusive-cell Pay qty × Rate agrees with Amount':'exclusive-cell arithmetic not proved';
    }
    out.push({kind,row,q,rate,amount,hours,verified,proof,band:bands[i]});
  }
  return {geo,rows:out};
 }
 function adaptiveColumnHtml(words){const r=adaptiveColumnResolve(words),g=r.geo;
- let head='<details open style="margin-top:12px;padding:10px;border:2px solid #175cd3;border-radius:10px"><summary style="font-weight:900">3bf3 Row-Bounded Column Geometry · '+r.rows.filter(x=>x.verified).length+'/'+r.rows.length+' verified</summary><p style="font-size:12px;color:#475467">Keeps the printed header lanes learned in 3bf2, then gives every labelled earnings line its own exclusive vertical row band. A number cannot be borrowed from the row above or below. Basic Pay may verify from its printed Amount cell alone; enhancement and overtime rows still require same-row Pay quantity × Rate = Amount.</p>';
+ let head='<details open style="margin-top:12px;padding:10px;border:2px solid #175cd3;border-radius:10px"><summary style="font-weight:900">3bf4 Header Cell Boundaries · '+r.rows.filter(x=>x.verified).length+'/'+r.rows.length+' verified</summary><p style="font-size:12px;color:#475467">Learns the four physical earnings cells from the printed header: <b>Hours worked → Units paid → Rate → Amount</b>. Each number must now belong to both one exclusive row band and one exclusive column rectangle. Repeated HOURS/SESSIONS text is separated by printed left-to-right geometry rather than guessed from payroll values.</p>';
  head+='<p><b>Header lock:</b> '+escDbg(g.reason)+'<br>Hours x≈'+(g.hours?Math.round(g.hours):'—')+' · Pay qty x≈'+(g.qty?Math.round(g.qty):'—')+' · Rate x≈'+(g.rate?Math.round(g.rate):'—')+' · Amount x≈'+(g.amount?Math.round(g.amount):'—')+'</p>';
+ if(g.bounds)head+='<p style="font-size:11px;color:#667085"><b>Cell boundaries:</b> Hours '+Math.round(g.bounds.hours[0])+'–'+Math.round(g.bounds.hours[1])+' · Pay qty '+Math.round(g.bounds.qty[0])+'–'+Math.round(g.bounds.qty[1])+' · Rate '+Math.round(g.bounds.rate[0])+'–'+Math.round(g.bounds.rate[1])+' · Amount '+Math.round(g.bounds.amount[0])+'–'+Math.round(g.bounds.amount[1])+'</p>';
  head+=r.rows.map(x=>'<div style="padding:7px 0;border-top:1px solid #d0d5dd"><b style="color:'+(x.verified?'#067647':'#b54708')+'">'+(x.verified?'✓ VERIFIED':'⚠ NEEDS REVIEW')+'</b> · '+escDbg(x.row.text)+'<br><small>Row band y '+Math.round(x.band.top)+'–'+Math.round(x.band.bottom)+' · Hours '+(x.hours?x.hours.value:'—')+' · Pay qty '+(x.q?x.q.value:'—')+' · Rate '+(x.rate?x.rate.value:'—')+' · Amount '+(x.amount?x.amount.value:'—')+'<br>'+escDbg(x.proof)+'</small></div>').join('');return head+'</details>'}
 
 function earningsRowInspectorHtml(words){
