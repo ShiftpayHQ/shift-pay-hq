@@ -1,3 +1,15 @@
-Shift Pay HQ v9.10.3bf8 DEV — Cell Recovery Pass
+Shift Pay HQ v9.10.3bf9 DEV — High-Resolution Row Scanner
 
-Preserves 3bf7 Printed Row Reconstruction. Once a physical earnings row and printed column geometry are locked, blank numeric cells are re-read only inside that same cell using enlarged numeric-only OCR, multiple threshold variants and alternate single-line segmentation. Recovered values require repeated agreement. No neighbouring row or column can donate a value. Enhancement and overtime rows still require Pay quantity × Rate = Amount before auto-fill; Basic still requires an independently isolated Amount.
+Built directly from v9.10.3bf8.
+
+Changes:
+- preserves substantially more source-photo resolution before earnings OCR
+- orientation detection still uses a smaller working copy for speed
+- final upright payslip and earnings table are rebuilt at higher resolution
+- printed-row reconstruction and strict row/column ownership remain intact
+- isolated cell recovery now works from the higher-resolution earnings source
+- no neighbouring row/column may donate a value
+- uncertain values remain blank; nothing is silently guessed
+- review/confirmation remains mandatory before Pay Check
+
+Development build only. Root/live release remains untouched.
