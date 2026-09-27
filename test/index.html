@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf7 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf7 · Printed Row Reconstruction</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf8 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf8 · Cell Recovery Pass</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -380,7 +380,7 @@ function resetScanReview(){
 }
 function markScanField(id,state){let st=document.getElementById(id+'State');if(!st)return;if(state==='found'){st.textContent='Found ✓ — check against payslip';st.className='scan-field-state found'}else if(state==='check'){st.textContent='Needs checking';st.className='scan-field-state check'}else{st.textContent='Not found — enter manually';st.className='scan-field-state missing'}}
 function setScanField(id,value){let el=document.getElementById(id);if(!el)return;let n=(value===null||value===undefined||value==='')?null:Number(value);if(n!==null&&Number.isFinite(n)&&n>=0){el.value=n.toFixed(2);markScanField(id,'found')}else{el.value='';markScanField(id,'missing')}}
-async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3bf7 Printed Row Reconstruction started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
+async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3bf8 Cell Recovery Pass started. Preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
 function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
 function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
 function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}
@@ -865,7 +865,7 @@ function adaptiveColumnResolve(words){
 // This prevents a distorted label baseline from shifting Basic/Sunday/Unsocial/OT by one row.
 async function cellIsolatedOCRResolve(worker, earningsCrop, words, found){
  const geo=adaptiveHeaderGeometry(words);
- if(!geo.usable)return '<details open style="margin-top:12px;padding:10px;border:2px solid #b54708;border-radius:10px"><summary style="font-weight:900">3bf7 Printed Row Reconstruction · geometry unavailable</summary><p>Printed column boundaries were not proved, so no earnings values were used.</p></details>';
+ if(!geo.usable)return '<details open style="margin-top:12px;padding:10px;border:2px solid #b54708;border-radius:10px"><summary style="font-weight:900">3bf8 Cell Recovery Pass · geometry unavailable</summary><p>Printed column boundaries were not proved, so no earnings values were used.</p></details>';
  const parse=(raw,lane)=>{const pat=lane==='rate'?/\d{1,3}[.,]\d{4}/g:/\d{1,5}[.,]\d{1,2}/g;return (String(raw||'').match(pat)||[]).map(x=>Number(x.replace(',','.'))).filter(Number.isFinite)};
  async function ocrRect(x0,y0,x1,y1,lane,whitelist=true){
    x0=Math.max(0,Math.floor(x0));x1=Math.min(earningsCrop.width,Math.ceil(x1));y0=Math.max(0,Math.floor(y0));y1=Math.min(earningsCrop.height,Math.ceil(y1));
@@ -880,6 +880,32 @@ async function cellIsolatedOCRResolve(worker, earningsCrop, words, found){
    if(!lane)return {raw:texts.sort((a,b)=>b.length-a.length)[0]||'',preview};
    vals.forEach(a=>a.votes=vals.filter(b=>Math.abs(a.v-b.v)<(lane==='rate'?.00005:.005)).length);vals.sort((a,b)=>b.votes-a.votes);const best=vals[0]||null;
    return {best:best&&best.votes>=2?best:null,raw:best?.raw||texts[0]||'',preview};
+ }
+ // 3bf8: when the strict cell read is blank, re-read ONLY that same physical cell
+ // with safe padding / threshold / segmentation variants. Evidence may never cross
+ // a printed column boundary or the reconstructed row's local neighbourhood.
+ async function recoverCell(lane,band,first){
+   if(first?.best)return first;
+   const xr=geo.bounds[lane], candidates=[];
+   const variants=[
+     {yp:3,xp:2,psm:'7',thr:170},{yp:5,xp:3,psm:'7',thr:185},
+     {yp:7,xp:4,psm:'13',thr:175},{yp:9,xp:5,psm:'13',thr:195}
+   ];
+   let preview=first?.preview||'', texts=[];
+   for(const v of variants){
+     const x0=Math.max(xr[0],xr[0]+v.xp),x1=Math.min(xr[1],xr[1]-v.xp);
+     const y0=Math.max(0,band.top-v.yp),y1=Math.min(earningsCrop.height,band.bottom+v.yp);
+     const scale=7,c=document.createElement('canvas');c.width=Math.max(1,Math.round((x1-x0)*scale));c.height=Math.max(1,Math.round((y1-y0)*scale));
+     const ctx=c.getContext('2d',{willReadFrequently:true});ctx.imageSmoothingEnabled=true;ctx.drawImage(earningsCrop,x0,y0,x1-x0,y1-y0,0,0,c.width,c.height);
+     const im=ctx.getImageData(0,0,c.width,c.height),d=im.data;for(let i=0;i<d.length;i+=4){let g=.299*d[i]+.587*d[i+1]+.114*d[i+2];g=g<v.thr?0:255;d[i]=d[i+1]=d[i+2]=g}ctx.putImageData(im,0,0);
+     await worker.setParameters({tessedit_pageseg_mode:v.psm,tessedit_char_whitelist:'0123456789., ',preserve_interword_spaces:'1'});
+     const rr=await worker.recognize(c,{}, {text:true});const raw=String(rr?.data?.text||'').replace(/\s+/g,' ').trim();texts.push(raw);
+     for(const n of parse(raw,lane))candidates.push({v:n,raw});if(!preview)preview=c.toDataURL('image/jpeg',.72);
+   }
+   const tol=lane==='rate'?.00008:.011;for(const a of candidates)a.votes=candidates.filter(b=>Math.abs(a.v-b.v)<tol).length;
+   candidates.sort((a,b)=>b.votes-a.votes);const best=candidates[0]||null;
+   // Recovery needs agreement from at least two independent variant reads.
+   return {best:best&&best.votes>=2?best:null,raw:best?.raw||texts[0]||first?.raw||'',preview,recovered:!!(best&&best.votes>=2)};
  }
  function detectPrintedBands(){
    const xr=geo.bounds.amount,x0=Math.max(0,Math.floor(xr[0])),x1=Math.min(earningsCrop.width,Math.ceil(xr[1]));
@@ -899,17 +925,17 @@ async function cellIsolatedOCRResolve(worker, earningsCrop, words, found){
  const cards=[],verified=[],explicitOT=[];
  for(const r of reconstructed){
    const {band,kind,desc}=r;if(kind==='ot')explicitOT.push(r);
-   const cells={};for(const lane of (kind==='basic'?['amount']:['hours','qty','rate','amount'])){const xr=geo.bounds[lane];cells[lane]=await ocrRect(xr[0],band.top,xr[1],band.bottom,lane,true)}
+   const cells={};for(const lane of (kind==='basic'?['amount']:['hours','qty','rate','amount'])){const xr=geo.bounds[lane];const strict=await ocrRect(xr[0],band.top,xr[1],band.bottom,lane,true);cells[lane]=await recoverCell(lane,band,strict)}
    const val=k=>cells[k]?.best?.v??null,hours=val('hours'),q=val('qty'),rate=val('rate'),amount=val('amount');let ok=false,reason='Physical row did not prove its cells';
    if(kind==='basic'){ok=amount!=null&&amount>=500&&amount<10000;reason=ok?'Basic Amount independently read from its reconstructed printed row':'Basic Amount not independently readable in reconstructed row'}
    else{ok=q!=null&&rate!=null&&amount!=null&&approxMoney(q,rate,amount);reason=ok?'Reconstructed row proves Pay qty × Rate = Amount':'Reconstructed row arithmetic not proved'}
-   if(ok){verified.push({kind,hours,q,rate,amount,row:r});if(kind==='basic'){found.basic=+amount.toFixed(2);ownScanEvidence('basic',found.basic,'3bf7-printed-row');setScanFieldState('aBasic',found.basic,'found')}if(kind==='sunday'){found.sunday=+amount.toFixed(2);found.sundayUnits=q;ownScanEvidence('sunday',found.sunday,'3bf7-printed-row');ownScanEvidence('sundayUnits',q,'3bf7-printed-row');setScanFieldState('aSunday',found.sunday,'found');setScanFieldState('aSundayUnits',q,'found')}if(kind==='us'){found.us=+amount.toFixed(2);found.usUnits=q;ownScanEvidence('us',found.us,'3bf7-printed-row');ownScanEvidence('usUnits',q,'3bf7-printed-row');setScanFieldState('aUS',found.us,'found');setScanFieldState('aUSUnits',q,'found')}}
+   if(ok){verified.push({kind,hours,q,rate,amount,row:r});if(kind==='basic'){found.basic=+amount.toFixed(2);ownScanEvidence('basic',found.basic,'3bf8-cell-recovery');setScanFieldState('aBasic',found.basic,'found')}if(kind==='sunday'){found.sunday=+amount.toFixed(2);found.sundayUnits=q;ownScanEvidence('sunday',found.sunday,'3bf8-cell-recovery');ownScanEvidence('sundayUnits',q,'3bf8-cell-recovery');setScanFieldState('aSunday',found.sunday,'found');setScanFieldState('aSundayUnits',q,'found')}if(kind==='us'){found.us=+amount.toFixed(2);found.usUnits=q;ownScanEvidence('us',found.us,'3bf8-cell-recovery');ownScanEvidence('usUnits',q,'3bf8-cell-recovery');setScanFieldState('aUS',found.us,'found');setScanFieldState('aUSUnits',q,'found')}}
    const pics=Object.entries(cells).map(([k,c])=>'<div style="display:grid;grid-template-columns:70px 1fr;gap:6px;align-items:center;margin:4px 0"><b>'+escDbg(k)+'</b><span>'+(c.best?escDbg(c.best.v):'—')+'</span>'+(c.preview?'<img src="'+c.preview+'" style="grid-column:1/3;max-width:100%;max-height:58px;object-fit:contain">':'')+'</div>').join('');
    cards.push('<div style="padding:8px 0;border-top:1px solid #d0d5dd"><b>'+escDbg(desc.raw||'(description unreadable)')+'</b><br><small>Physical band y '+Math.round(band.top)+'–'+Math.round(band.bottom)+'</small><br><strong style="color:'+(ok?'#067647':'#b54708')+'">'+(ok?'✓ VERIFIED':'⚠ NEEDS REVIEW')+'</strong> · '+escDbg(reason)+pics+'</div>');
  }
- const vOT=verified.filter(v=>v.kind==='ot');if(explicitOT.length&&vOT.length===explicitOT.length){const amt=+vOT.reduce((n,v)=>n+v.amount,0).toFixed(2),qty=+vOT.reduce((n,v)=>n+v.q,0).toFixed(2);found.ot=amt;found.otUnits=qty;ownScanEvidence('ot',amt,'3bf7-complete-printed-row-ot');ownScanEvidence('otUnits',qty,'3bf7-complete-printed-row-ot');setScanFieldState('aOT',amt,'found');setScanFieldState('aOTUnits',qty,'found')}else if(explicitOT.length){found.ot=null;found.otUnits=null;setScanFieldState('aOT',null,'missing');setScanFieldState('aOTUnits',null,'missing')}
+ const vOT=verified.filter(v=>v.kind==='ot');if(explicitOT.length&&vOT.length===explicitOT.length){const amt=+vOT.reduce((n,v)=>n+v.amount,0).toFixed(2),qty=+vOT.reduce((n,v)=>n+v.q,0).toFixed(2);found.ot=amt;found.otUnits=qty;ownScanEvidence('ot',amt,'3bf8-complete-cell-recovery-ot');ownScanEvidence('otUnits',qty,'3bf8-complete-cell-recovery-ot');setScanFieldState('aOT',amt,'found');setScanFieldState('aOTUnits',qty,'found')}else if(explicitOT.length){found.ot=null;found.otUnits=null;setScanFieldState('aOT',null,'missing');setScanFieldState('aOTUnits',null,'missing')}
  await worker.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:'',preserve_interword_spaces:'1'});
- return '<details open style="margin-top:12px;padding:10px;border:3px solid #175cd3;border-radius:10px"><summary style="font-weight:900">3bf7 Printed Row Reconstruction · '+verified.length+'/'+reconstructed.length+' verified</summary><p style="font-size:12px;color:#475467">Rows are now discovered from the <b>printed Amount-column ink bands</b>, not from the OCR label baseline. The Description and all numeric cells are then re-read from the exact same physical y-band. A row can only turn green when Basic has an isolated Amount or an enhancement/OT row proves Pay quantity × Rate = Amount.</p><p style="font-size:11px;color:#667085"><b>Physical lines detected:</b> '+physical.length+' · <b>earnings descriptions reconstructed:</b> '+reconstructed.length+'</p>'+cards.join('')+'</details>';
+ return '<details open style="margin-top:12px;padding:10px;border:3px solid #175cd3;border-radius:10px"><summary style="font-weight:900">3bf8 Cell Recovery Pass · '+verified.length+'/'+reconstructed.length+' verified</summary><p style="font-size:12px;color:#475467">3bf7 printed-row reconstruction is preserved. 3bf8 then retries each <b>individual locked cell</b> with enlarged numeric-only OCR, multiple thresholds and segmentation modes. Recovery still cannot cross a row or printed column boundary. A row turns green only when Basic has an isolated Amount or an enhancement/OT row proves Pay quantity × Rate = Amount.</p><p style="font-size:11px;color:#667085"><b>Physical lines detected:</b> '+physical.length+' · <b>earnings descriptions reconstructed:</b> '+reconstructed.length+'</p>'+cards.join('')+'</details>';
 }
 
 function adaptiveColumnHtml(words){const r=adaptiveColumnResolve(words),g=r.geo;
@@ -1182,7 +1208,7 @@ async function scanPayslip(file){scanProgress.classList.add('on');scanProgressBa
    const cropWords=collectOcrWords(earningsRead&&earningsRead.data);
    // 3bf5 supersedes legacy cross-section summary guesses. Deductions/totals remain blank unless independently isolated in a later pass.
    for(const [k,id] of [['tax','aTax'],['ni','aNI'],['pen','aPen'],['net','aNet'],['gross','aGross']]){found[k]=null;setScanFieldState(id,null,'missing')}
-   try{coordinateDiagnostic+=await cellIsolatedOCRResolve(worker,earningsCrop,cropWords,found)}catch(e){coordinateDiagnostic+='<p style="color:#b54708">3bf5 cell-isolated OCR unavailable: '+escDbg(e?.message||e)+'</p>'}
+   try{coordinateDiagnostic+=await cellIsolatedOCRResolve(worker,earningsCrop,cropWords,found)}catch(e){coordinateDiagnostic+='<p style="color:#b54708">3bf8 cell recovery unavailable: '+escDbg(e?.message||e)+'</p>'}
    await worker.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:'',preserve_interword_spaces:'1'});
    const cropModel=geometryValidatedRows(cropWords),fullModel=geometryValidatedRows(fullPageWords);
    const cropScore=cropModel.labelled.length*10+(cropModel.headerLock?.usable?20:0);

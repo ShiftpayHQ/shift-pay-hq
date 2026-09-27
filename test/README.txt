@@ -1,3 +1,3 @@
-Shift Pay HQ v9.10.3bf7 DEV — Printed Row Reconstruction
+Shift Pay HQ v9.10.3bf8 DEV — Cell Recovery Pass
 
-Builds on 3bf6 but removes the OCR description baseline as the numeric-row anchor. 3bf7 detects physical printed earnings lines from the Amount-column ink pattern, then OCRs Description, Hours worked, Units paid, Rate and Amount from the same reconstructed row band. Existing arithmetic safety gates remain: Basic needs an isolated Amount; enhancement/OT rows need Pay quantity × Rate = Amount; incomplete OT sets are withheld.
+Preserves 3bf7 Printed Row Reconstruction. Once a physical earnings row and printed column geometry are locked, blank numeric cells are re-read only inside that same cell using enlarged numeric-only OCR, multiple threshold variants and alternate single-line segmentation. Recovered values require repeated agreement. No neighbouring row or column can donate a value. Enhancement and overtime rows still require Pay quantity × Rate = Amount before auto-fill; Basic still requires an independently isolated Amount.
