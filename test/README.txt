@@ -1,3 +1,3 @@
-Shift Pay HQ v9.10.3bf11 DEV — Manual-Guided Layout Learning
+Shift Pay HQ v9.10.3bf11.1 DEV — Teaching Result + Anchor Matcher
 
-Adds a supervised scanner-learning step: after scanning, enter the correct payslip values and tap Teach scanner. The app stores normalised cell positions and nearby label context, not the pay amounts. Future scans can use those learned anchors as review-only candidates. Existing safety checks remain in place; uncertain values are never silently confirmed.
+Fixes the supervised teaching action so it always gives an explicit success/failure result. Manual confirmed values are matched to OCR coordinates with nearby row-label context; repeated values are left ambiguous unless row context disambiguates them. A learned profile is only saved when at least three anchors are safely located. Stored profiles contain normalized positions and nearby label context, not the confirmed pay amounts. Also renames the three review quantity fields to Hours worked to match the payslip semantics.
