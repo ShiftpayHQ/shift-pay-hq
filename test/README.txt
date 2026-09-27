@@ -1,3 +1,3 @@
-Shift Pay HQ v9.10.3bf10 DEV — Geometry Recovery
+Shift Pay HQ v9.10.3bf11 DEV — Manual-Guided Layout Learning
 
-Preserves 3bf9 high-resolution row/cell OCR. If complete printed header geometry cannot be proved, 3bf10 may recover the four earnings columns from repeated physical numeric-lane x positions. Recovery uses geometry only, never payroll values, Band rates, salaries or hard-coded payslip coordinates. Values remain withheld unless the existing row/cell safety checks prove them.
+Adds a supervised scanner-learning step: after scanning, enter the correct payslip values and tap Teach scanner. The app stores normalised cell positions and nearby label context, not the pay amounts. Future scans can use those learned anchors as review-only candidates. Existing safety checks remain in place; uncertain values are never silently confirmed.
