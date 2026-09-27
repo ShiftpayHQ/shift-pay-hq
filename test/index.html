@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf9 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf9 · High-Resolution Row Scanner</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf10 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf10 · Geometry Recovery</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -380,7 +380,7 @@ function resetScanReview(){
 }
 function markScanField(id,state){let st=document.getElementById(id+'State');if(!st)return;if(state==='found'){st.textContent='Found ✓ — check against payslip';st.className='scan-field-state found'}else if(state==='check'){st.textContent='Needs checking';st.className='scan-field-state check'}else{st.textContent='Not found — enter manually';st.className='scan-field-state missing'}}
 function setScanField(id,value){let el=document.getElementById(id);if(!el)return;let n=(value===null||value===undefined||value==='')?null:Number(value);if(n!==null&&Number.isFinite(n)&&n>=0){el.value=n.toFixed(2);markScanField(id,'found')}else{el.value='';markScanField(id,'missing')}}
-async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3bf9 High-Resolution Row Scanner started. Preserving source pixels and preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
+async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3bf10 Geometry Recovery started. Preserving source pixels and preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
 function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
 function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
 function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}
@@ -827,15 +827,44 @@ function adaptiveHeaderGeometry(words){
  const explicitWorked=clusters.filter(c=>/worked/.test(ctext(c))&&c.x<(rate??Infinity)).sort((a,b)=>b.x-a.x)[0];
  const explicitPaid=clusters.filter(c=>/units|paid/.test(ctext(c))&&c.x<(rate??Infinity)).sort((a,b)=>b.x-a.x)[0];
  if(explicitWorked&&explicitPaid&&explicitWorked.x+35<explicitPaid.x){hours=explicitWorked.x;qty=explicitPaid.x}
- const centers=[hours,qty,rate,amount];
- const usable=centers.every(Number.isFinite)&&hours+25<qty&&qty+25<rate&&rate+25<amount;
+ // 3bf10 geometry recovery: if header OCR is incomplete, recover the four physical
+ // numeric lanes from repeated x-position evidence in the earnings crop. This uses only
+ // printed geometry (where numeric ink repeatedly appears), never the numeric values themselves.
+ let geometrySource='header';
+ let centers=[hours,qty,rate,amount];
+ let usable=centers.every(Number.isFinite)&&hours+25<qty&&qty+25<rate&&rate+25<amount;
+ if(!usable){
+   const numeric=[];
+   for(const w of (words||[])){
+     const txt=String(w.text||'').trim();
+     if(!/^[£]?\s*[0-9][0-9, .]*$/.test(txt))continue;
+     const cx=wordCenterX(w), cy=(w.bbox.y0+w.bbox.y1)/2;
+     if(Number.isFinite(cx)&&Number.isFinite(cy)&&cy>=firstY-20)numeric.push({cx,cy,w});
+   }
+   let ncl=[];
+   for(const n of numeric.sort((a,b)=>a.cx-b.cx)){
+     let c=ncl.find(c=>Math.abs(c.x-n.cx)<52);
+     if(!c)ncl.push(c={x:n.cx,pts:[]});
+     c.pts.push(n);c.x=c.pts.reduce((z,q)=>z+q.cx,0)/c.pts.length;
+   }
+   // A physical payroll column should recur on more than one printed line. Prefer stable,
+   // repeated lanes and take the four right-most ordered lanes (Description is to their left).
+   let stable=ncl.filter(c=>c.pts.length>=2).sort((a,b)=>a.x-b.x);
+   if(stable.length>=4){
+     const cand=stable.slice(-4), xs=cand.map(c=>c.x), gaps=[xs[1]-xs[0],xs[2]-xs[1],xs[3]-xs[2]];
+     const minGap=Math.min(...gaps),maxGap=Math.max(...gaps);
+     if(minGap>55&&maxGap<420){
+       [hours,qty,rate,amount]=xs; centers=xs; usable=true; geometrySource='repeated numeric-lane geometry';
+     }
+   }
+ }
  let bounds=null;
  if(usable){
    const m01=(hours+qty)/2,m12=(qty+rate)/2,m23=(rate+amount)/2;
-   const gap=Math.max(70,qty-hours);
-   bounds={hours:[hours-gap*.62,m01],qty:[m01,m12],rate:[m12,m23],amount:[m23,amount+(amount-rate)*.70]};
+   const leftGap=Math.max(60,qty-hours), rightGap=Math.max(60,amount-rate);
+   bounds={hours:[Math.max(0,hours-leftGap*.62),m01],qty:[m01,m12],rate:[m12,m23],amount:[m23,amount+rightGap*.70]};
  }
- return {usable,hours,qty,rate,amount,bounds,clusters,reason:usable?'Printed header cell boundaries learned':'All four printed earnings columns were not proved'};
+ return {usable,hours,qty,rate,amount,bounds,clusters,geometrySource,reason:usable?(geometrySource==='header'?'Printed header cell boundaries learned':'Recovered from repeated physical numeric lanes; header OCR incomplete'):'Neither printed headers nor repeated numeric lanes proved four earnings columns'};
 }
 function adaptiveColumnResolve(words){
  const geo=adaptiveHeaderGeometry(words), rows=spatialRows(words||[]), out=[];
@@ -865,7 +894,7 @@ function adaptiveColumnResolve(words){
 // This prevents a distorted label baseline from shifting Basic/Sunday/Unsocial/OT by one row.
 async function cellIsolatedOCRResolve(worker, earningsCrop, words, found){
  const geo=adaptiveHeaderGeometry(words);
- if(!geo.usable)return '<details open style="margin-top:12px;padding:10px;border:2px solid #b54708;border-radius:10px"><summary style="font-weight:900">3bf9 High-Resolution Row Scanner · geometry unavailable</summary><p>Printed column boundaries were not proved, so no earnings values were used.</p></details>';
+ if(!geo.usable)return '<details open style="margin-top:12px;padding:10px;border:2px solid #b54708;border-radius:10px"><summary style="font-weight:900">3bf10 Geometry Recovery · geometry unavailable</summary><p>Neither the printed headers nor repeated physical numeric lanes proved four safe earnings columns, so no earnings values were used.</p></details>';
  const parse=(raw,lane)=>{const pat=lane==='rate'?/\d{1,3}[.,]\d{4}/g:/\d{1,5}[.,]\d{1,2}/g;return (String(raw||'').match(pat)||[]).map(x=>Number(x.replace(',','.'))).filter(Number.isFinite)};
  async function ocrRect(x0,y0,x1,y1,lane,whitelist=true){
    x0=Math.max(0,Math.floor(x0));x1=Math.min(earningsCrop.width,Math.ceil(x1));y0=Math.max(0,Math.floor(y0));y1=Math.min(earningsCrop.height,Math.ceil(y1));
@@ -935,7 +964,7 @@ async function cellIsolatedOCRResolve(worker, earningsCrop, words, found){
  }
  const vOT=verified.filter(v=>v.kind==='ot');if(explicitOT.length&&vOT.length===explicitOT.length){const amt=+vOT.reduce((n,v)=>n+v.amount,0).toFixed(2),qty=+vOT.reduce((n,v)=>n+v.q,0).toFixed(2);found.ot=amt;found.otUnits=qty;ownScanEvidence('ot',amt,'3bf9-highres-complete-ot');ownScanEvidence('otUnits',qty,'3bf9-highres-complete-ot');setScanFieldState('aOT',amt,'found');setScanFieldState('aOTUnits',qty,'found')}else if(explicitOT.length){found.ot=null;found.otUnits=null;setScanFieldState('aOT',null,'missing');setScanFieldState('aOTUnits',null,'missing')}
  await worker.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:'',preserve_interword_spaces:'1'});
- return '<details open style="margin-top:12px;padding:10px;border:3px solid #175cd3;border-radius:10px"><summary style="font-weight:900">3bf9 High-Resolution Row Scanner · '+verified.length+'/'+reconstructed.length+' verified</summary><p style="font-size:12px;color:#475467">3bf7 printed-row reconstruction is preserved. 3bf9 keeps substantially more of the original photo resolution before building each <b>individual locked row/cell crop</b>. OCR works from those source-resolution rectangles, not a tiny diagnostic derivative. Recovery still cannot cross a row or printed column boundary. Two securely read values may prove the third arithmetically, but calculated values remain marked as calculated until independently supported.</p><p style="font-size:11px;color:#667085"><b>High-resolution earnings source:</b> '+earningsCrop.width+'×'+earningsCrop.height+' px · <b>physical lines:</b> '+physical.length+' · <b>earnings descriptions reconstructed:</b> '+reconstructed.length+'</p>'+cards.join('')+'</details>';
+ return '<details open style="margin-top:12px;padding:10px;border:3px solid #175cd3;border-radius:10px"><summary style="font-weight:900">3bf10 Geometry Recovery + High-Resolution Cells · '+verified.length+'/'+reconstructed.length+' verified</summary><p style="font-size:12px;color:#475467">3bf7 printed-row reconstruction and 3bf9 high-resolution cell OCR are preserved. 3bf10 can recover missing header geometry from repeated physical numeric lanes, then keeps substantially more of the original photo resolution before building each <b>individual locked row/cell crop</b>. OCR works from those source-resolution rectangles, not a tiny diagnostic derivative. Recovery still cannot cross a row or printed column boundary. Two securely read values may prove the third arithmetically, but calculated values remain marked as calculated until independently supported.</p><p style="font-size:11px;color:#667085"><b>Geometry:</b> '+escDbg(geo.geometrySource||'header')+' · <b>High-resolution earnings source:</b> '+earningsCrop.width+'×'+earningsCrop.height+' px · <b>physical lines:</b> '+physical.length+' · <b>earnings descriptions reconstructed:</b> '+reconstructed.length+'</p>'+cards.join('')+'</details>';
 }
 
 function adaptiveColumnHtml(words){const r=adaptiveColumnResolve(words),g=r.geo;
