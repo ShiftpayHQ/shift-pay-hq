@@ -1,3 +1,8 @@
-Shift Pay HQ v9.10.3bf11.1 DEV — Teaching Result + Anchor Matcher
+Shift Pay HQ v9.10.3bf11.2 DEV — Coordinate Capture
 
-Fixes the supervised teaching action so it always gives an explicit success/failure result. Manual confirmed values are matched to OCR coordinates with nearby row-label context; repeated values are left ambiguous unless row context disambiguates them. A learned profile is only saved when at least three anchors are safely located. Stored profiles contain normalized positions and nearby label context, not the confirmed pay amounts. Also renames the three review quantity fields to Hours worked to match the payslip semantics.
+Changes:
+- Captures OCR word coordinates during the main payslip scan.
+- Adds TSV coordinate fallback for iPhone/Safari when OCR text is available but nested word boxes are not.
+- Keeps manual-guided teaching safety gate: no coordinates = no learned profile.
+- Learned profile stores normalized positions/nearby labels, not historical pay amounts.
+- Existing review-before-save workflow retained.
