@@ -18,7 +18,7 @@ const elements = {};
 const writes = [];
 const element = id => elements[id] ||= {value:'', innerHTML:'', style:{}, classList:{add(){}}, insertAdjacentHTML(_, value){this.innerHTML+=value}};
 const ctx = vm.createContext({console:{error(){}}, document:{getElementById:element, createElement:()=>element('modal'), body:{appendChild(){}}}, localStorage:{getItem:()=>null,setItem:(k,v)=>writes.push([k,v])}});
-for (const name of ['normalizeTeachingNumber','teachingCandidateReason','teachingCandidateTable','teachingDiagnosticHtml','showAllTeachingCandidates','readLearnedLayout','imageCoordinateBounds','learnedLayoutDiagnosticHtml','wordBox','numericWordValue','pageBounds','nearestLabel','fieldNumber','sane','ocrNormalise','fuzzyLabel','markScanField','setScanFieldState','applyLearnedLayout','snapshotManualReview','restoreManualReview','manualTrainingValues','expandedNumericCandidates','teachScannerFromManual','collectOcrWords','escDbg','scanDiagnosticHtml','isolateNewScan','scanPayslip']) vm.runInContext(source(name),ctx);
+for (const name of ['teachingSpatialModel','teachingRawRowsHtml','showAllTeachingRows','normalizeTeachingNumber','teachingCandidateReason','teachingCandidateTable','teachingDiagnosticHtml','showAllTeachingCandidates','readLearnedLayout','imageCoordinateBounds','learnedLayoutDiagnosticHtml','wordBox','numericWordValue','pageBounds','nearestLabel','fieldNumber','sane','ocrNormalise','fuzzyLabel','markScanField','setScanFieldState','applyLearnedLayout','snapshotManualReview','restoreManualReview','manualTrainingValues','expandedNumericCandidates','teachScannerFromManual','collectOcrWords','escDbg','scanDiagnosticHtml','isolateNewScan','scanPayslip']) vm.runInContext(source(name),ctx);
 const run = code => vm.runInContext(code,ctx);
 const word = (text,x,y=10) => ({text,bbox:{x0:x,y0:y,x1:x+30,y1:y+10},conf:95});
 ctx.words=[word('Basic',0),word('1234.56',100),word('edge',300,300)];
@@ -109,6 +109,31 @@ ctx.fragments=[token('1234',100,10),token('.56',134,50)];
 assert.equal(run('expandedNumericCandidates(fragments).filter(c=>!c.reason&&c.v===1234.56).length'),0,'different rows cannot join');
 ctx.fragments=[token('1234',100,10),token('X',134,10),token('.56',144,10)];
 assert.equal(run('expandedNumericCandidates(fragments).filter(c=>!c.reason&&c.v===1234.56).length'),0,'intervening tokens cannot be skipped');
+// Synthetic iPhone-like monetary rows: character fragments, separate currency/decimal,
+// baseline shifts, and neighbouring payroll columns. These are not captured device OCR.
+ctx.moneyRows=[
+ token('PAYE',0,100,70,22),token('38.00',130,102,50,22),
+ token('10',240,101,20,22),token('60',262,109,20,22),token('.',284,124,3,4),token('0',289,104,10,22),token('7',301,108,10,22),
+ token('9999.99',420,101,70,22),
+ token('Gross',0,190,70,22),token('48.00',130,192,50,22),token('£',220,191,9,22),
+ token('5',232,192,10,22),token(',',244,209,3,5),token('3',249,195,10,22),token('49',261,202,20,22),
+ token('.',283,215,3,4),token('6',288,195,10,22),token('3',300,201,10,22),token('8888.88',420,192,70,22),
+ token('12.34',240,150,50,22),token('56.78',240,240,50,22)
+];
+run('moneyModel=teachingSpatialModel(moneyRows)');
+assert.equal(run('moneyModel.candidates.filter(c=>!c.reason&&c.v===1060.07).length'),1,'PAYE integer and cents fragments reconstruct');
+assert.equal(run('moneyModel.candidates.filter(c=>!c.reason&&c.v===5349.63).length'),1,'Gross currency/grouping/decimal reconstruct');
+assert.equal(run('moneyModel.candidates.filter(c=>!c.reason&&c.v===9999.99).length'),1,'neighbouring amount remains separate');
+assert.ok(run('moneyModel.rows.some(r=>r.boundaries.some(b=>b.reason.includes("Column/word gap")))'));
+assert.equal(run('moneyModel.candidates.filter(c=>!c.reason&&c.parts.length>1&&c.w.text.includes("9999")).length'),0);
+ctx.noDecimal=ctx.moneyRows.filter(t=>t.text!=='.');
+assert.equal(run('expandedNumericCandidates(noDecimal).filter(c=>!c.reason&&[1060.07,5349.63].includes(c.v)).length'),0,'no decimal insertion');
+ctx.noDigit=ctx.moneyRows.filter(t=>t.text!=='7');
+assert.equal(run('expandedNumericCandidates(noDigit).filter(c=>!c.reason&&c.v===1060.07).length'),0,'no digit insertion');
+ctx.crossRows=[token('10',240,100,20,22),token('60',262,135,20,22),token('.',284,150,3,4),token('07',289,135,20,22)];
+assert.equal(run('expandedNumericCandidates(crossRows).filter(c=>!c.reason&&c.v===1060.07).length'),0,'neighbouring row cannot complete an amount');
+ctx.wideGap=[token('10',240,100,20,22),token('60',290,100,20,22),token('.',312,117,3,4),token('07',317,100,20,22)];
+assert.equal(run('expandedNumericCandidates(wideGap).filter(c=>!c.reason&&c.v===1060.07).length'),0,'neighbouring column cannot complete an amount');
 const fields=['aBasic','aUSUnits','aUS','aSundayUnits','aSunday','aOTUnits','aOT','aGross','aTax','aNI','aPen','aNet'];
 const labels=['Basic','Unsocial','Unsocial','Sunday','Sunday','Overtime','Overtime','Gross','Income tax','National insurance','Pension','Net'];
 const values=['3210.45','41.00','234.56','21.00','234.56','17.00','654.32','4321.09','765.43','210.98','345.67','2999.01'];
@@ -132,7 +157,7 @@ assert.equal(taught.coordinateSpace.width,600);assert.ok(taught.coordinateSpace.
 assert.equal(taught.anchors.basic.x,(180+(187+4*8+16))/2/600);
 for(const anchor of Object.values(taught.anchors))assert.deepEqual(Object.keys(anchor).sort(),['h','label','w','x','y']);
 assert.ok(!JSON.stringify(taught).includes('3210.45'),'no historical payroll answers persisted');
-assert.match(element('layoutLearningStatus').innerHTML,/DEV bf11.6 manual teaching diagnostics/);
+assert.match(element('layoutLearningStatus').innerHTML,/DEV bf11.7 manual teaching diagnostics/);
 assert.match(element('layoutLearningStatus').innerHTML,/numeric equality/i);
 run('showAllTeachingCandidates(0)');assert.match(element('teachingCandidates0').innerHTML,/Selected for layout teaching/);
 // Ambiguous repeats must not replace an old profile, even when the manual target is known.
@@ -151,6 +176,20 @@ run('lastScanFullPageWords=repeated;teachScannerFromManual()');
 assert.equal(writes.length,savedBefore);
 assert.equal(run('lastTeachingDiagnostic.fields.filter(f=>f.selected!==null).length'),0);
 assert.match(run('lastTeachingDiagnostic.fields.find(f=>f.field==="sunday").reason'),/same physical candidate/);
+fields.forEach(id=>element(id).value='');element('aTax').value='1060.07';element('aGross').value='5349.63';
+run('lastScanFullPageWords=noDecimal;teachScannerFromManual()');
+assert.equal(writes.length,savedBefore,'failed monetary reconstruction retains saved profile');
+assert.match(element('layoutLearningStatus').innerHTML,/Raw physical rows for PAYE/);
+assert.match(element('layoutLearningStatus').innerHTML,/Raw physical rows for Gross/);
+assert.match(element('layoutLearningStatus').innerHTML,/Contiguous runs/);
+assert.match(element('layoutLearningStatus').innerHTML,/Run boundaries/);
+assert.match(element('layoutLearningStatus').innerHTML,/240, 101, 260, 123/,'raw x/y bounds visible');
+assert.match(element('layoutLearningStatus').innerHTML,/“10”/,'raw text visible');
+assert.match(element('layoutLearningStatus').innerHTML,/No explicit decimal/,'why decimal-less run fails is visible');
+run('showAllTeachingRows(8)');assert.match(element('teachingRows8').innerHTML,/9999.99/);
+run("lastTeachingDiagnostic.previousLayout=null;lastTeachingDiagnostic.spatial=teachingSpatialModel([{text:'<img onerror=bad>',bbox:{x0:0,y0:0,x1:60,y1:20}}])");
+assert.match(run('teachingRawRowsHtml(lastTeachingDiagnostic.fields[8],true)'),/Expected region is unknown/);
+assert.match(run('teachingRawRowsHtml(lastTeachingDiagnostic.fields[8],true)'),/&lt;img/,'raw OCR is HTML escaped');
 run('lastScanFullPageWords=words;lastScanEvidenceWords=words;isolateNewScan()');
 assert.equal(run('lastScanFullPageWords.length+lastScanEvidenceWords.length'),0,'new scan clears stale coordinates');
 // Exercise the actual orchestration with local fake OCR and deliberate failures.
