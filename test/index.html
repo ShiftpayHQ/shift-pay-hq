@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf11.5 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf10 · Geometry Recovery</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf11.6 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf10 · Geometry Recovery</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -368,6 +368,7 @@ let lastScanFullPageWords=[];
 let lastScanEvidenceWords=[];
 let scanDiagnostic={stage:'Not started',failure:null,coordinates:0};
 function scanDiagnosticHtml(){return '<p><b>Scanner stage:</b> '+escDbg(scanDiagnostic.stage)+(scanDiagnostic.failure?' — '+escDbg(scanDiagnostic.failure):'')+'<br>Full-page coordinate words retained: '+scanDiagnostic.coordinates+'.</p>'}
+let lastTeachingDiagnostic=null;
 let layoutStorageStatus='Not read',lastScanCoordinateSpace=null,learnedMatchDiagnostic=null;
 function readLearnedLayout(){try{let raw=localStorage.getItem('sphq_scanner_layout_v1');layoutStorageStatus=raw===null?'Missing key':'Key present';return raw===null?null:JSON.parse(raw)}catch(e){layoutStorageStatus='Storage/JSON error: '+(e?.message||String(e));return null}}
 let learnedLayout=readLearnedLayout();
@@ -376,13 +377,13 @@ function learnedLayoutDiagnosticHtml(){
  let d=learnedMatchDiagnostic||{status:'Matching not reached',anchors:[],hits:0},p=learnedLayout;
  const show=x=>escDbg(JSON.stringify(x)??'Unavailable');
  let rows=d.anchors.map(a=>'<tr><td>'+escDbg(a.field)+'</td><td>'+show(a.expected)+'</td><td>'+show({nearestNumeric:a.nearest,nearestToken:a.nearestToken})+'</td><td>'+escDbg(a.reason)+'</td></tr>').join('');
- return '<details open style="margin-top:12px;padding:10px;border:1px solid #7f56d9;border-radius:10px"><summary>🧠 3bf11.5 Learned Layout · '+d.hits+' anchor hits</summary><p>Storage key: sphq_scanner_layout_v1 · '+escDbg(layoutStorageStatus)+'<br>Profile exists: '+(p?'yes':'no')+' · Saved anchors: '+(p?.anchors&&typeof p.anchors==='object'?Object.keys(p.anchors).length:0)+'<br>Profile/layout version: '+show({version:p?.version,layout:p?.profile})+'<br>Status: '+escDbg(d.status)+'</p><p>Current image / coordinate space: '+show(lastScanCoordinateSpace)+'<br>Teaching coordinate space: '+(p?.coordinateSpace?show(p.coordinateSpace):'Unavailable — legacy profile did not record image dimensions or OCR bounds. Re-teach to record them.')+'<br>Current OCR token bounds: '+show(pageBounds(lastScanFullPageWords))+'<br>OCR tokens with coordinates: '+lastScanFullPageWords.length+'</p><p>Distance uses normalized x and 1.5 × normalized y; threshold remains 0.035. Expected text is the saved nearby label. Historical values are not stored, so value equality with an old payslip is not tested.</p><div style="overflow:auto"><table><thead><tr><th>Anchor</th><th>Expected normalized position / label</th><th>Nearest numeric OCR candidate / label match</th><th>Decision</th></tr></thead><tbody>'+rows+'</tbody></table></div><p>Diagnostics remain on this device. Review and confirmation are required before saving.</p></details>';
+ return '<details open style="margin-top:12px;padding:10px;border:1px solid #7f56d9;border-radius:10px"><summary>🧠 3bf11.6 Learned Layout · '+d.hits+' anchor hits</summary><p>Storage key: sphq_scanner_layout_v1 · '+escDbg(layoutStorageStatus)+'<br>Profile exists: '+(p?'yes':'no')+' · Saved anchors: '+(p?.anchors&&typeof p.anchors==='object'?Object.keys(p.anchors).length:0)+'<br>Profile/layout version: '+show({version:p?.version,layout:p?.profile})+'<br>Status: '+escDbg(d.status)+'</p><p>Current image / coordinate space: '+show(lastScanCoordinateSpace)+'<br>Teaching coordinate space: '+(p?.coordinateSpace?show(p.coordinateSpace):'Unavailable — legacy profile did not record image dimensions or OCR bounds. Re-teach to record them.')+'<br>Current OCR token bounds: '+show(pageBounds(lastScanFullPageWords))+'<br>OCR tokens with coordinates: '+lastScanFullPageWords.length+'</p><p>Distance uses normalized x and 1.5 × normalized y; threshold remains 0.035. Expected text is the saved nearby label. Historical values are not stored, so value equality with an old payslip is not tested.</p><div style="overflow:auto"><table><thead><tr><th>Anchor</th><th>Expected normalized position / label</th><th>Nearest numeric OCR candidate / label match</th><th>Decision</th></tr></thead><tbody>'+rows+'</tbody></table></div><p>Diagnostics remain on this device. Review and confirmation are required before saving.</p></details>';
 }
 function ownScanEvidence(field,value,source){if(value===null||value===undefined||!Number.isFinite(Number(value)))return false;if(scanEvidenceOwners[field])return false;scanEvidenceOwners[field]={value:Number(value),source};return true}
 function ownsScanEvidence(field,source){return !!scanEvidenceOwners[field]&&scanEvidenceOwners[field].source===source}
 function isolateNewScan(){
  scanReviewPending=true;
- lastScanFullPageWords=[];lastScanEvidenceWords=[];lastScanCoordinateSpace=null;learnedMatchDiagnostic=null;learnedLayout=readLearnedLayout();
+ lastScanFullPageWords=[];lastScanEvidenceWords=[];lastScanCoordinateSpace=null;learnedMatchDiagnostic=null;lastTeachingDiagnostic=null;let teachingStatus=document.getElementById('layoutLearningStatus');if(teachingStatus)teachingStatus.innerHTML='';learnedLayout=readLearnedLayout();
  scanDiagnostic={stage:'Preparing new scan',failure:null,coordinates:0};
  scanEvidenceOwners={};
  scanEarningsRows=[];
@@ -403,45 +404,126 @@ function pageBounds(words){let bs=(words||[]).map(wordBox).filter(b=>b.x1>b.x0&&
 function nearestLabel(words,box){let candidates=(words||[]).filter(w=>{let b=wordBox(w),t=String(w.text||'').trim();return /[A-Za-z]/.test(t)&&b.cx<box.cx&&Math.abs(b.cy-box.cy)<42}).sort((a,b)=>wordBox(b).cx-wordBox(a).cx);return candidates.slice(0,5).reverse().map(w=>String(w.text||'').trim()).join(' ')}
 function snapshotManualReview(){let ids=['aBasic','aUSUnits','aUS','aSundayUnits','aSunday','aOTUnits','aOT','aGross','aTax','aNI','aPen','aNet'];return Object.fromEntries(ids.map(id=>[id,document.getElementById(id)?.value??'']))}
 function restoreManualReview(snap){for(const [id,v] of Object.entries(snap||{})){let el=document.getElementById(id);if(el)el.value=v}}
-function expandedNumericCandidates(words){
- let base=(words||[]).map(w=>({w,v:numericWordValue(w),b:wordBox(w)})).filter(x=>x.v!=null);
- // Also reconstruct numbers OCR split into adjacent pieces on the same printed line, e.g. 3602 + .58.
- let sorted=(words||[]).filter(w=>w&&w.text).map(w=>({w,b:wordBox(w)})).sort((a,b)=>a.b.cy-b.b.cy||a.b.x0-b.b.x0);
- for(let i=0;i<sorted.length;i++)for(let j=i+1;j<Math.min(sorted.length,i+4);j++){
-   let a=sorted[i],b=sorted[j]; if(Math.abs(a.b.cy-b.b.cy)>12)break; if(b.b.x0-a.b.x1>28)continue;
-   let t=(String(a.w.text||'')+String(b.w.text||'')).replace(/[£,\s]/g,'').replace(/[Oo]/g,'0');
-   if(/^\d+(?:\.\d{1,4})?$/.test(t)){let v=Number(t);if(Number.isFinite(v))base.push({w:{text:t,bbox:{x0:a.b.x0,y0:Math.min(a.b.y0,b.b.y0),x1:b.b.x1,y1:Math.max(a.b.y1,b.b.y1)}},v,b:{x0:a.b.x0,y0:Math.min(a.b.y0,b.b.y0),x1:b.b.x1,y1:Math.max(a.b.y1,b.b.y1),cx:(a.b.x0+b.b.x1)/2,cy:(Math.min(a.b.y0,b.b.y0)+Math.max(a.b.y1,b.b.y1))/2}})}
- }
- return base;
+function normalizeTeachingNumber(raw){
+ // Teaching only: require numeric syntax and explicit decimal/group separators.
+ let text=String(raw??'').normalize('NFKC').trim(),changes=[];
+ if(/\d\s+\d/.test(text)&&!/[.,·•٫]/.test(text)&&!/^£?\s*\d{1,3}(?:\s+\d{3})+$/.test(text))return {normalized:text,value:null,reason:'Separated digits without explicit decimal or valid grouping'};
+ let t=text.replace(/[\u00a0\u202f\s]/g,'').replace(/[·•٫]/g,'.').replace(/^£/,'').replace(/[;:]$/,'');
+ if(!/\d/.test(t))return {normalized:t,value:null,reason:'No digit evidence'};
+ if(!/^[\dOoIl|SB.,]+$/.test(t))return {normalized:t,value:null,reason:'Unsupported text, sign or punctuation'};
+ let substituted=t.replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/S/g,'5').replace(/B/g,'8');
+ if(substituted!==t)changes.push('OCR substitutions O/o→0, I/l/|→1, S→5, B→8');
+ t=substituted;
+ if(/^\d{1,3}(?:,\d{3})+(?:\.\d{1,4})?$/.test(t))t=t.replace(/,/g,'');
+ else if(/^\d+,\d{2}$/.test(t)){t=t.replace(',','.');changes.push('Explicit comma decimal separator')}
+ if(!/^\d+(?:\.\d{1,4})?$/.test(t))return {normalized:t,value:null,reason:'Incomplete or ambiguous numeric punctuation'};
+ let value=Number(t);
+ return {normalized:t,value:Number.isFinite(value)?value:null,reason:Number.isFinite(value)?'':'Non-finite number',changes};
 }
+function expandedNumericCandidates(words){
+ const validBox=b=>[b.x0,b.y0,b.x1,b.y1].every(Number.isFinite)&&b.x1>b.x0&&b.y1>b.y0;
+ let tokens=(words||[]).map((w,id)=>({id,w,b:wordBox(w)})),out=[];
+ const add=(parts,reason='')=>{
+  let text=parts.map(x=>x.w.text).join(' '),p=normalizeTeachingNumber(text);
+  let bbox={x0:Math.min(...parts.map(x=>x.b.x0)),y0:Math.min(...parts.map(x=>x.b.y0)),x1:Math.max(...parts.map(x=>x.b.x1)),y1:Math.max(...parts.map(x=>x.b.y1))};
+  let w={text,bbox},b=wordBox(w);
+  out.push({id:out.length,w,b,v:p.value,normalized:p.normalized,changes:p.changes||[],parts:parts.map(x=>x.id),reason:reason||(!validBox(b)?'Invalid token coordinates':p.reason)});
+ };
+ tokens.filter(x=>!validBox(x.b)).forEach(x=>add([x],'Invalid token coordinates'));
+ tokens=tokens.filter(x=>validBox(x.b));
+ // Tesseract may include both a word and its contained symbols. Never concatenate both.
+ tokens=tokens.filter((x,i,a)=>!a.some((z,j)=>i!==j&&z.b.x0<=x.b.x0&&z.b.x1>=x.b.x1&&z.b.y0<=x.b.y0&&z.b.y1>=x.b.y1&&((String(x.w.text).length===1&&String(z.w.text).length>1&&String(z.w.text).includes(x.w.text))||(z.w.text===x.w.text&&j<i))));
+ let rows=[];
+ for(const t of [...tokens].sort((a,b)=>(b.b.y1-b.b.y0)-(a.b.y1-a.b.y0)||a.b.y0-b.b.y0)){
+  let h=t.b.y1-t.b.y0,r=rows.find(r=>Math.min(r.y1,t.b.y1)-Math.max(r.y0,t.b.y0)>=.65*Math.min(h,r.y1-r.y0));
+  if(!r){r={y0:t.b.y0,y1:t.b.y1,tokens:[]};rows.push(r)}r.tokens.push(t);
+ }
+ for(const row of rows){
+  const ts=row.tokens.sort((a,b)=>a.b.x0-b.b.x0),h=row.y1-row.y0;
+  for(let i=0;i<ts.length;i++){
+   add([ts[i]]);
+   for(let j=i+1;j<Math.min(ts.length,i+8);j++){
+    let left=ts[j-1],right=ts[j],parts=ts.slice(i,j+1),gap=right.b.x0-left.b.x1;
+    if(gap<0||gap>h*.5){add(parts,'Tokens overlap or are too far apart for one number');break}
+    if(parts.some(x=>!/^[£\dOoIl|SB.,·•٫\s;:]+$/.test(String(x.w.text)))){add(parts,'Intervening label or unsupported token');break}
+    let complete=normalizeTeachingNumber(left.w.text);
+    if(complete.value!==null&&normalizeTeachingNumber(right.w.text).value!==null){add(parts,'Two complete numeric tokens cannot be merged without an intervening separator');break}
+    if(complete.value!==null&&/\.\d{2,}$/.test(complete.normalized)){add(parts,'Completed decimal cell must not join another token');break}
+    let explicit=/[.,·•٫]/.test(parts.map(x=>x.w.text).join(''));
+    add(parts,explicit?'':'No explicit decimal/group separator; digits are not guessed');
+   }
+  }
+ }
+ // Do not teach a value from only the integer/fraction fragment of a reconstructed number.
+ for(const c of out){if(!c.reason&&out.some(z=>!z.reason&&z.parts.length>c.parts.length&&c.parts.every(id=>z.parts.includes(id))))c.reason='Fragment of a larger reconstructed numeric token'}
+ // Equivalent overlapping representations are one physical candidate, not repeated values.
+ for(let i=0;i<out.length;i++){let c=out[i];if(c.reason)continue;let old=out.slice(0,i).find(z=>!z.reason&&z.v===c.v&&Math.abs(z.b.cx-c.b.cx)<3&&Math.abs(z.b.cy-c.b.cy)<3);if(old)c.reason='Duplicate coordinate representation'}
+ return out;
+}
+function teachingCandidateReason(candidate,field){
+ if(field.problem)return field.problem;
+ if(candidate.reason)return candidate.reason;
+ if(Math.abs(candidate.v-field.target)>1e-6)return 'Numeric difference exceeds exact-value tolerance (0.000001)';
+ if(field.selected===candidate.id)return 'Selected for layout teaching';
+ if(field.selected!==null)return 'Matching value rejected: another location has stronger field-label evidence';
+ return field.reason||'Matching value not selected';
+}
+function teachingCandidateTable(field,all=false){
+ const d=lastTeachingDiagnostic;
+ let candidates=[...d.candidates].sort((a,b)=>{
+  const score=c=>c.v===null?Infinity:Math.abs(c.v-field.target);
+  return score(a)-score(b)||a.id-b.id;
+ });
+ if(!all)candidates=candidates.slice(0,12);
+ return '<div style="overflow:auto;max-height:420px"><table><thead><tr><th>Candidate ID / reconstructed text</th><th>Normalized / value</th><th>Coordinates</th><th>Difference</th><th>Decision</th></tr></thead><tbody>'+candidates.map(c=>'<tr><td>'+c.id+': '+escDbg(c.w.text)+'</td><td>'+escDbg(c.normalized)+' / '+escDbg(c.v===null?'unparsed':c.v)+'<br>'+escDbg(c.changes.join('; '))+'</td><td>'+escDbg(JSON.stringify(c.b))+'</td><td>'+escDbg(c.v===null||field.target===null?'N/A':(c.v-field.target).toFixed(6))+'</td><td>'+escDbg(teachingCandidateReason(c,field))+'</td></tr>').join('')+'</tbody></table></div>';
+}
+function showAllTeachingCandidates(index){let el=document.getElementById('teachingCandidates'+index);if(el&&lastTeachingDiagnostic?.fields[index])el.innerHTML=teachingCandidateTable(lastTeachingDiagnostic.fields[index],true)}
+function teachingDiagnosticHtml(){
+ let d=lastTeachingDiagnostic;if(!d)return '';
+ return '<details open style="margin-top:12px"><summary>DEV bf11.6 manual teaching diagnostics</summary><p>'+d.tokenCount+' coordinate tokens; '+d.candidates.length+' candidate representations examined per field. Exact numeric equality is required after normalization. No missing decimals or digits are invented. Diagnostic values remain in memory on this device and are not stored in the layout profile.</p>'+d.fields.map((f,i)=>'<details><summary>'+escDbg(f.name)+' — '+escDbg(f.reason)+'</summary><p>Manual value: '+escDbg(f.manual)+' · normalized target: '+escDbg(f.target===null?'not entered':String(f.target))+' · selected candidate: '+escDbg(f.selected===null?'none':String(f.selected))+'</p><div id="teachingCandidates'+i+'">'+teachingCandidateTable(f)+'</div><button type="button" class="soft" onclick="showAllTeachingCandidates('+i+')">Show all '+d.candidates.length+' candidates for this field</button></details>').join('')+'</details>';
+}
+
 function teachScannerFromManual(){
  let manualSnapshot=snapshotManualReview();
  let st=document.getElementById('layoutLearningStatus'),words=lastScanFullPageWords;
- const names={basic:'Basic pay',usUnits:'Mon–Sat hours',us:'Mon–Sat amount',sunUnits:'Sunday hours',sun:'Sunday amount',otUnits:'OT hours',ot:'Overtime amount',gross:'Gross',tax:'PAYE',ni:'NI',pen:'Pension',net:'Net'};
- const hints={basic:['basic'],usUnits:['unsoc','bas'],us:['unsoc','bas'],sunUnits:['sunday'],sun:['sunday'],otUnits:['o/t','hours','t1/2'],ot:['o/t','hours','t1/2'],gross:['gross'],tax:['income','tax'],ni:['national','insur'],pen:['superann','pension'],net:['net']};
+ const names={basic:'Basic pay',usUnits:'Mon–Sat hours',us:'Mon–Sat amount',sundayUnits:'Sunday hours',sunday:'Sunday amount',otUnits:'OT hours',ot:'Overtime amount',gross:'Gross',tax:'PAYE',ni:'NI',pen:'Pension',net:'Net'};
+ const hints={basic:['basic'],usUnits:['unsoc','bas'],us:['unsoc','bas'],sundayUnits:['sunday'],sunday:['sunday'],otUnits:['o/t','hours','t1/2'],ot:['o/t','hours','t1/2'],gross:['gross'],tax:['income','tax'],ni:['national','insur'],pen:['superann','pension'],net:['net']};
  function showResult(title,body,ok){
    st.innerHTML='<div style="margin-top:10px;padding:12px;border-radius:12px;border:2px solid '+(ok?'#12b76a':'#f79009')+';background:'+(ok?'#ecfdf3':'#fffaeb')+'"><strong>'+title+'</strong><div style="margin-top:6px">'+body+'</div></div>';
    let old=document.getElementById('teachResultModal'); if(old) old.remove();
    let m=document.createElement('div');m.id='teachResultModal';m.style='position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.48);display:flex;align-items:center;justify-content:center;padding:22px';
    m.innerHTML='<div style="max-width:430px;width:100%;background:white;border-radius:20px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.25)"><div style="font-size:20px;font-weight:800;margin-bottom:8px">'+title+'</div><div style="line-height:1.45;color:#475467">'+body+'</div><button type="button" class="wide" style="margin-top:16px" onclick="document.getElementById(\'teachResultModal\').remove()">OK — keep reviewing</button></div>';
-   document.body.appendChild(m);
+   document.body.appendChild(m);st.insertAdjacentHTML('beforeend',teachingDiagnosticHtml());
  }
- if(!words.length){showResult('Teaching could not start','No OCR word coordinates are available from the last scan. Scan the payslip first, then enter the correct values and teach again.'+scanDiagnosticHtml(),false);return}
- let vals=manualTrainingValues(),bounds=imageCoordinateBounds(lastScanCoordinateSpace);if(!bounds){showResult('Teaching could not start','The last scan has no verified full-page image dimensions. Scan again before teaching. Nothing was saved.',false);return}
+ let vals=manualTrainingValues(),bounds=imageCoordinateBounds(lastScanCoordinateSpace),candidates=expandedNumericCandidates(words);
+ const ids=['aBasic','aUSUnits','aUS','aSundayUnits','aSunday','aOTUnits','aOT','aGross','aTax','aNI','aPen','aNet'];
+ let problem=!words.length?'No OCR coordinate tokens available':!bounds?'No verified full-page image dimensions':null;
+ lastTeachingDiagnostic={tokenCount:words.length,candidates,fields:Object.entries(vals).map(([field,target],i)=>({field,name:names[field]||field,manual:manualSnapshot[ids[i]],target:Number.isFinite(target)?target:null,selected:null,problem:problem||(!Number.isFinite(target)||target<0?'Manual value missing or invalid':null),reason:problem||'Not located'}))};
+ if(problem){lastTeachingDiagnostic.fields.forEach(f=>f.reason=problem);showResult('Teaching could not start',escDbg(problem)+'. Nothing was saved.'+scanDiagnosticHtml(),false);return}
+ // Profile diagnostics may contain rejected raw OCR text, but profiles must contain labels only.
+ const labelWords=words.filter(w=>! /^[£\dOoIl|SB.,·•٫\s;:]+$/.test(String(w.text)));
  let anchors={},missing=[],ambiguous=[];
- for(const [field,target] of Object.entries(vals)){
-   if(target==null)continue;
-   let matches=expandedNumericCandidates(words).filter(x=>Math.abs(x.v-target)<=Math.max(.011,Math.abs(target)*.00003));
-   if(!matches.length){missing.push(names[field]||field);continue}
-   matches=matches.filter((m,i,a)=>a.findIndex(z=>Math.abs(wordBox(z.w).cx-wordBox(m.w).cx)<3&&Math.abs(wordBox(z.w).cy-wordBox(m.w).cy)<3)===i);
-   let ranked=matches.map(x=>{let b=wordBox(x.w),lab=(nearestLabel(words,b)||'').toLowerCase(),score=0;(hints[field]||[]).forEach(h=>{if(lab.includes(h))score+=3});return {...x,b,lab,score}}).sort((a,b)=>b.score-a.score);
+ for(const fd of lastTeachingDiagnostic.fields){
+   let {field,target}=fd;
+   if(fd.problem){fd.reason=fd.problem;continue}
+   let matches=candidates.filter(x=>!x.reason&&x.v!==null&&Math.abs(x.v-target)<=1e-6);
+   if(!matches.length){fd.reason='No exact normalized numeric match';missing.push(names[field]||field);continue}
+   let ranked=matches.map(x=>{let b=x.b,lab=(nearestLabel(labelWords,b)||'').toLowerCase(),score=0;(hints[field]||[]).forEach(h=>{if(lab.includes(h))score+=3});return {...x,b,lab,score}}).sort((a,b)=>b.score-a.score);
    let chosen=null;
-   if(ranked.length===1) chosen=ranked[0];
-   else if(ranked[0].score>ranked[1].score) chosen=ranked[0];
-   else {ambiguous.push(names[field]||field);continue}
+   if(ranked.length===1)chosen=ranked[0];
+   else if(ranked[0].score>ranked[1].score)chosen=ranked[0];
+   else {fd.reason='Ambiguous: repeated matching values without a unique field label';ambiguous.push(names[field]||field);continue}
    let b=chosen.b;
-   anchors[field]={x:(b.cx-bounds.x0)/(bounds.x1-bounds.x0),y:(b.cy-bounds.y0)/(bounds.y1-bounds.y0),w:(b.x1-b.x0)/(bounds.x1-bounds.x0),h:(b.y1-b.y0)/(bounds.y1-bounds.y0),label:chosen.lab||''};
+   if(b.x0<0||b.y0<0||b.x1>bounds.x1||b.y1>bounds.y1){fd.reason='Candidate outside current full-page image';missing.push(names[field]||field);continue}
+   fd.selected=chosen.id;fd.reason=ranked.length>1?'Selected using unique field label':'Selected unique numeric candidate';
+   anchors[field]={x:b.cx/bounds.x1,y:b.cy/bounds.y1,w:(b.x1-b.x0)/bounds.x1,h:(b.y1-b.y0)/bounds.y1,label:chosen.lab||''};
  }
+ // One physical OCR number cannot establish two different payroll fields.
+ let selected=lastTeachingDiagnostic.fields.filter(f=>f.selected!==null);
+ for(const f of selected){if(selected.some(g=>g!==f&&g.selected===f.selected)){
+   delete anchors[f.field];f.reason='Ambiguous: same physical candidate requested by multiple fields';ambiguous.push(f.name);
+ }}
+ for(const f of selected)if(!anchors[f.field])f.selected=null;
  let n=Object.keys(anchors).length,total=Object.values(vals).filter(v=>v!=null).length;
  if(n<3){restoreManualReview(manualSnapshot);showResult('Layout learning incomplete',n+' of '+total+' confirmed values were safely located. <b>No layout profile was saved.</b><br><br>Not located: '+[...missing,...ambiguous].join(', ')+'.',false);return}
  let nextLayout={version:3,profile:'sas_payslip_layout_v1',createdAt:new Date().toISOString(),coordinateSpace:{...lastScanCoordinateSpace,normalization:'full-image',tokenBounds:pageBounds(words)},anchors};
@@ -484,7 +566,7 @@ function applyLearnedLayout(words,found){
  }
  return d.hits;
 }
-async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3bf11.5 OCR Recovery + Stage Diagnostics started. Preserving source pixels and preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
+async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3bf11.6 OCR Recovery + Stage Diagnostics started. Preserving source pixels and preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
 function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
 function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
 function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}

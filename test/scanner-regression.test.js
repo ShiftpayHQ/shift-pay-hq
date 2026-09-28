@@ -18,7 +18,7 @@ const elements = {};
 const writes = [];
 const element = id => elements[id] ||= {value:'', innerHTML:'', style:{}, classList:{add(){}}, insertAdjacentHTML(_, value){this.innerHTML+=value}};
 const ctx = vm.createContext({console:{error(){}}, document:{getElementById:element, createElement:()=>element('modal'), body:{appendChild(){}}}, localStorage:{getItem:()=>null,setItem:(k,v)=>writes.push([k,v])}});
-for (const name of ['readLearnedLayout','imageCoordinateBounds','learnedLayoutDiagnosticHtml','wordBox','numericWordValue','pageBounds','nearestLabel','fieldNumber','sane','ocrNormalise','fuzzyLabel','markScanField','setScanFieldState','applyLearnedLayout','snapshotManualReview','restoreManualReview','manualTrainingValues','expandedNumericCandidates','teachScannerFromManual','collectOcrWords','escDbg','scanDiagnosticHtml','isolateNewScan','scanPayslip']) vm.runInContext(source(name),ctx);
+for (const name of ['normalizeTeachingNumber','teachingCandidateReason','teachingCandidateTable','teachingDiagnosticHtml','showAllTeachingCandidates','readLearnedLayout','imageCoordinateBounds','learnedLayoutDiagnosticHtml','wordBox','numericWordValue','pageBounds','nearestLabel','fieldNumber','sane','ocrNormalise','fuzzyLabel','markScanField','setScanFieldState','applyLearnedLayout','snapshotManualReview','restoreManualReview','manualTrainingValues','expandedNumericCandidates','teachScannerFromManual','collectOcrWords','escDbg','scanDiagnosticHtml','isolateNewScan','scanPayslip']) vm.runInContext(source(name),ctx);
 const run = code => vm.runInContext(code,ctx);
 const word = (text,x,y=10) => ({text,bbox:{x0:x,y0:y,x1:x+30,y1:y+10},conf:95});
 ctx.words=[word('Basic',0),word('1234.56',100),word('edge',300,300)];
@@ -88,6 +88,69 @@ assert.ok(profile.coordinateSpace.tokenBounds);
 assert.equal(Object.keys(profile.anchors).length,3);
 for(const anchor of Object.values(profile.anchors)) assert.deepEqual(Object.keys(anchor).sort(),['h','label','w','x','y']);
 run('lastScanFullPageWords=[];teachScannerFromManual()');assert.equal(writes.length,1,'no coordinates means no saved profile');
+// Teaching-only numeric normalization: no changes to normal scanner parsing.
+for(const [raw,expected] of [['£ 1,234.56',1234.56],['£\u00a01\u202f234.56',1234.56],['1234·56;',1234.56],['1234,56',1234.56],['I,23O.5S',1230.55],['48.00',48]]){
+ ctx.raw=raw;assert.equal(run('normalizeTeachingNumber(raw).value'),expected,raw);
+}
+for(const raw of ['48 00','(123.45)','-123.45','12/34','12..34','12.34 56.78','BOSS','12,34,56']){
+ ctx.raw=raw;assert.equal(run('normalizeTeachingNumber(raw).value'),null,raw);
+}
+const token=(text,x,y,width=String(text).length*8,height=16)=>({text,bbox:{x0:x,y0:y,x1:x+width,y1:y+height},conf:95});
+ctx.fragments=[token('1234',100,10),token('.',134,20,3,5),token('56',139,12)];
+assert.equal(run('expandedNumericCandidates(fragments).filter(c=>!c.reason&&c.v===1234.56).length'),1,'three parts and baseline jitter reconstruct');
+assert.equal(run('expandedNumericCandidates(fragments).filter(c=>!c.reason&&c.v===1234).length'),0,'integer fragment cannot teach another value');
+ctx.fragments=[token('12',100,10),token('34',118,10)];
+assert.equal(run('expandedNumericCandidates(fragments).filter(c=>!c.reason&&c.v===1234).length'),0,'no joining integer cells without separators');
+ctx.fragments=[token('12',100,10),token('34.56',118,10)];
+assert.equal(run('expandedNumericCandidates(fragments).filter(c=>!c.reason&&c.v===1234.56).length'),0,'two complete numeric cells must not merge');
+ctx.fragments=[token('1234',100,10),token('.56',180,10)];
+assert.equal(run('expandedNumericCandidates(fragments).filter(c=>!c.reason&&c.v===1234.56).length'),0,'distant columns cannot join');
+ctx.fragments=[token('1234',100,10),token('.56',134,50)];
+assert.equal(run('expandedNumericCandidates(fragments).filter(c=>!c.reason&&c.v===1234.56).length'),0,'different rows cannot join');
+ctx.fragments=[token('1234',100,10),token('X',134,10),token('.56',144,10)];
+assert.equal(run('expandedNumericCandidates(fragments).filter(c=>!c.reason&&c.v===1234.56).length'),0,'intervening tokens cannot be skipped');
+const fields=['aBasic','aUSUnits','aUS','aSundayUnits','aSunday','aOTUnits','aOT','aGross','aTax','aNI','aPen','aNet'];
+const labels=['Basic','Unsocial','Unsocial','Sunday','Sunday','Overtime','Overtime','Gross','Income tax','National insurance','Pension','Net'];
+const values=['3210.45','41.00','234.56','21.00','234.56','17.00','654.32','4321.09','765.43','210.98','345.67','2999.01'];
+ctx.teachingWords=[];
+values.forEach((value,i)=>{
+ const [whole,fraction]=value.split('.'),y=40+i*70;
+ fields.forEach(id=>element(id));element(fields[i]).value=value;
+ ctx.teachingWords.push(token(labels[i],0,y,80),token(whole,180,y),token('.',182+whole.length*8,y+10,3,5),token(fraction,187+whole.length*8,y+2));
+});
+// Same token volume as the reported device test, with synthetic noise only.
+while(ctx.teachingWords.length<1411){const n=ctx.teachingWords.length;ctx.teachingWords.push(token('noise',400+(n%4)*45,1200+Math.floor(n/4)*20))}
+run("lastScanFullPageWords=teachingWords;lastScanCoordinateSpace={kind:'full-page-enhanced-v1',width:600,height:10000};learnedLayout={version:2,anchors:{old:{x:.1,y:.1}}}");
+const allBefore=run('JSON.stringify(snapshotManualReview())');
+run('teachScannerFromManual()');
+assert.equal(run('lastTeachingDiagnostic.fields.length'),12);
+assert.equal(run('lastTeachingDiagnostic.fields.filter(f=>f.selected!==null).length'),12,'all synthetic values reconstructed, repeated Sunday/unsocial amounts distinguished by label');
+assert.equal(run('JSON.stringify(snapshotManualReview())'),allBefore);
+const taught=JSON.parse(writes.at(-1)[1]);
+assert.equal(taught.version,3);assert.equal(Object.keys(taught.anchors).length,12);
+assert.equal(taught.coordinateSpace.width,600);assert.ok(taught.coordinateSpace.tokenBounds);
+assert.equal(taught.anchors.basic.x,(180+(187+4*8+16))/2/600);
+for(const anchor of Object.values(taught.anchors))assert.deepEqual(Object.keys(anchor).sort(),['h','label','w','x','y']);
+assert.ok(!JSON.stringify(taught).includes('3210.45'),'no historical payroll answers persisted');
+assert.match(element('layoutLearningStatus').innerHTML,/DEV bf11.6 manual teaching diagnostics/);
+assert.match(element('layoutLearningStatus').innerHTML,/numeric equality/i);
+run('showAllTeachingCandidates(0)');assert.match(element('teachingCandidates0').innerHTML,/Selected for layout teaching/);
+// Ambiguous repeats must not replace an old profile, even when the manual target is known.
+fields.forEach(id=>element(id).value='');element('aOTUnits').value='17.00';
+ctx.repeated=[token('17.00',100,10),token('17.00',100,100)];
+const savedBefore=writes.length,layoutBefore=run('JSON.stringify(learnedLayout)');
+run('lastScanFullPageWords=repeated;teachScannerFromManual()');
+assert.equal(writes.length,savedBefore);
+assert.equal(run('JSON.stringify(learnedLayout)'),layoutBefore);
+assert.match(run('lastTeachingDiagnostic.fields.find(f=>f.field==="otUnits").reason'),/Ambiguous/);
+assert.equal(element('aOTUnits').value,'17.00');
+// One physical amount cannot train both Sunday and unsocial when a second occurrence is missing.
+fields.forEach(id=>element(id).value='');element('aUS').value='234.56';element('aSunday').value='234.56';
+ctx.repeated=[token('234.56',100,10)];
+run('lastScanFullPageWords=repeated;teachScannerFromManual()');
+assert.equal(writes.length,savedBefore);
+assert.equal(run('lastTeachingDiagnostic.fields.filter(f=>f.selected!==null).length'),0);
+assert.match(run('lastTeachingDiagnostic.fields.find(f=>f.field==="sunday").reason'),/same physical candidate/);
 run('lastScanFullPageWords=words;lastScanEvidenceWords=words;isolateNewScan()');
 assert.equal(run('lastScanFullPageWords.length+lastScanEvidenceWords.length'),0,'new scan clears stale coordinates');
 // Exercise the actual orchestration with local fake OCR and deliberate failures.
