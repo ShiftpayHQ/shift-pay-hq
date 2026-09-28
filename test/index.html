@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf11.7 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf10 · Geometry Recovery</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf11.8 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf10 · Geometry Recovery</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -377,7 +377,7 @@ function learnedLayoutDiagnosticHtml(){
  let d=learnedMatchDiagnostic||{status:'Matching not reached',anchors:[],hits:0},p=learnedLayout;
  const show=x=>escDbg(JSON.stringify(x)??'Unavailable');
  let rows=d.anchors.map(a=>'<tr><td>'+escDbg(a.field)+'</td><td>'+show(a.expected)+'</td><td>'+show({nearestNumeric:a.nearest,nearestToken:a.nearestToken})+'</td><td>'+escDbg(a.reason)+'</td></tr>').join('');
- return '<details open style="margin-top:12px;padding:10px;border:1px solid #7f56d9;border-radius:10px"><summary>🧠 3bf11.7 Learned Layout · '+d.hits+' anchor hits</summary><p>Storage key: sphq_scanner_layout_v1 · '+escDbg(layoutStorageStatus)+'<br>Profile exists: '+(p?'yes':'no')+' · Saved anchors: '+(p?.anchors&&typeof p.anchors==='object'?Object.keys(p.anchors).length:0)+'<br>Profile/layout version: '+show({version:p?.version,layout:p?.profile})+'<br>Status: '+escDbg(d.status)+'</p><p>Current image / coordinate space: '+show(lastScanCoordinateSpace)+'<br>Teaching coordinate space: '+(p?.coordinateSpace?show(p.coordinateSpace):'Unavailable — legacy profile did not record image dimensions or OCR bounds. Re-teach to record them.')+'<br>Current OCR token bounds: '+show(pageBounds(lastScanFullPageWords))+'<br>OCR tokens with coordinates: '+lastScanFullPageWords.length+'</p><p>Distance uses normalized x and 1.5 × normalized y; threshold remains 0.035. Expected text is the saved nearby label. Historical values are not stored, so value equality with an old payslip is not tested.</p><div style="overflow:auto"><table><thead><tr><th>Anchor</th><th>Expected normalized position / label</th><th>Nearest numeric OCR candidate / label match</th><th>Decision</th></tr></thead><tbody>'+rows+'</tbody></table></div><p>Diagnostics remain on this device. Review and confirmation are required before saving.</p></details>';
+ return '<details open style="margin-top:12px;padding:10px;border:1px solid #7f56d9;border-radius:10px"><summary>🧠 3bf11.8 Learned Layout · '+d.hits+' anchor hits</summary><p>Storage key: sphq_scanner_layout_v1 · '+escDbg(layoutStorageStatus)+'<br>Profile exists: '+(p?'yes':'no')+' · Saved anchors: '+(p?.anchors&&typeof p.anchors==='object'?Object.keys(p.anchors).length:0)+'<br>Profile/layout version: '+show({version:p?.version,layout:p?.profile})+'<br>Status: '+escDbg(d.status)+'</p><p>Current image / coordinate space: '+show(lastScanCoordinateSpace)+'<br>Teaching coordinate space: '+(p?.coordinateSpace?show(p.coordinateSpace):'Unavailable — legacy profile did not record image dimensions or OCR bounds. Re-teach to record them.')+'<br>Current OCR token bounds: '+show(pageBounds(lastScanFullPageWords))+'<br>OCR tokens with coordinates: '+lastScanFullPageWords.length+'</p><p>Distance uses normalized x and 1.5 × normalized y; threshold remains 0.035. Expected text is the saved nearby label. Historical values are not stored, so value equality with an old payslip is not tested.</p><div style="overflow:auto"><table><thead><tr><th>Anchor</th><th>Expected normalized position / label</th><th>Nearest numeric OCR candidate / label match</th><th>Decision</th></tr></thead><tbody>'+rows+'</tbody></table></div><p>Diagnostics remain on this device. Review and confirmation are required before saving.</p></details>';
 }
 function ownScanEvidence(field,value,source){if(value===null||value===undefined||!Number.isFinite(Number(value)))return false;if(scanEvidenceOwners[field])return false;scanEvidenceOwners[field]={value:Number(value),source};return true}
 function ownsScanEvidence(field,source){return !!scanEvidenceOwners[field]&&scanEvidenceOwners[field].source===source}
@@ -424,17 +424,33 @@ function teachingSpatialModel(words){
  const median=a=>{let s=[...a].sort((x,y)=>x-y);return s[Math.floor(s.length/2)]};
  const valid=b=>[b.x0,b.y0,b.x1,b.y1].every(Number.isFinite)&&b.x1>b.x0&&b.y1>b.y0;
  let raw=(words||[]).map((w,id)=>({id,w,b:wordBox(w),excluded:''})),rows=[],candidates=[];
+ const content=t=>String(t.w.text).normalize('NFKC').replace(/\s/g,'');
+ const area=t=>(t.b.x1-t.b.x0)*(t.b.y1-t.b.y0);
+ const contains=(a,b)=>area(a)>=area(b)&&Math.max(0,Math.min(a.b.x1,b.b.x1)-Math.max(a.b.x0,b.b.x0))*Math.max(0,Math.min(a.b.y1,b.b.y1)-Math.max(a.b.y0,b.b.y0))>=area(b)*.92;
+ // Prefer a tight word to a duplicate parent, and words/leaves to multiline text boxes.
  for(const t of raw){
   if(!valid(t.b)){t.excluded='Invalid coordinates';continue}
-  let parent=raw.find(z=>z!==t&&valid(z.b)&&z.b.x0<=t.b.x0&&z.b.x1>=t.b.x1&&z.b.y0<=t.b.y0&&z.b.y1>=t.b.y1&&((z.w.text===t.w.text&&z.id<t.id)||(String(t.w.text).length===1&&String(z.w.text).length>1&&String(z.w.text).includes(t.w.text))));
-  if(parent)t.excluded='Duplicate/contained symbol of token '+parent.id;
+  let same=raw.find(z=>z!==t&&valid(z.b)&&content(z)===content(t)&&contains(t,z)&&(area(z)<area(t)||z.id<t.id));
+  if(same){t.excluded='Duplicate parent representation; prefer token '+same.id;continue}
+  let children=raw.filter(z=>z!==t&&valid(z.b)&&contains(t,z)&&area(z)<area(t)&&content(z)&&content(t).includes(content(z)));
+  let useful=children.filter(z=>String(z.w.text).length>1),childHeight=useful.length?median(useful.map(z=>z.b.y1-z.b.y0)):0;
+  if(useful.length>=2&&t.b.y1-t.b.y0>childHeight*1.6){t.excluded='Parent spans child baselines; use contained words';continue}
+  let leaves=children.filter(z=>!children.some(q=>q!==z&&contains(z,q)&&area(q)<area(z))).sort((a,b)=>a.b.cy-b.b.cy||a.b.x0-b.b.x0);
+  let sameLine=[...leaves].sort((a,b)=>a.b.x0-b.b.x0),joined=sameLine.map(content).join('');
+  if(leaves.length>=2&&joined===content(t)){
+   let h=median(leaves.map(z=>z.b.y1-z.b.y0)),span=Math.max(...leaves.map(z=>z.b.cy))-Math.min(...leaves.map(z=>z.b.cy));
+   // A complete, tightly bounded word is better than its individual glyphs.
+   if(span<=h*.55&&t.b.y1-t.b.y0<=h*1.5&&leaves.every(z=>String(z.w.text).length===1)){
+    for(const z of leaves)if(!z.excluded)z.excluded='Contained glyph; prefer complete word '+t.id;
+   }else t.excluded='Parent duplicates contained word/leaf content';
+  }
  }
  const update=r=>{let ts=r.tokens.filter(t=>!t.punctuation);if(!ts.length)ts=r.tokens;r.y0=median(ts.map(t=>t.b.y0));r.y1=median(ts.map(t=>t.b.y1));r.h=r.y1-r.y0;r.cy=(r.y0+r.y1)/2};
  const active=raw.filter(t=>!t.excluded);
  active.forEach(t=>t.punctuation=/^[£.,·•٫;:]+$/.test(String(t.w.text).trim()));
  // Body tokens establish robust row baselines. Tiny punctuation cannot drag a row.
  for(const t of active.filter(t=>!t.punctuation).sort((a,b)=>a.b.cy-b.b.cy||a.b.x0-b.b.x0)){
-  let h=t.b.y1-t.b.y0,choices=rows.map(r=>({r,dy:Math.abs(r.cy-t.b.cy),overlap:Math.min(r.y1,t.b.y1)-Math.max(r.y0,t.b.y0)})).filter(c=>c.overlap>=.40*Math.min(h,c.r.h)&&c.dy<=.55*Math.min(h,c.r.h)).sort((a,b)=>a.dy-b.dy);
+  let h=t.b.y1-t.b.y0,choices=rows.map(r=>({r,dy:Math.abs(r.cy-t.b.cy),baseline:Math.abs(r.y1-t.b.y1)})).filter(c=>c.dy<=.55*Math.min(h,c.r.h)&&c.baseline<=.65*Math.min(h,c.r.h)).sort((a,b)=>a.dy-b.dy||a.baseline-b.baseline);
   let r=choices[0]?.r;if(!r){r={tokens:[]};rows.push(r)}r.tokens.push(t);update(r);
  }
  // Attach decimal/currency glyphs using both vertical bounds and horizontal proximity.
@@ -451,10 +467,13 @@ function teachingSpatialModel(words){
  };
  const numeric=t=>/^[£\dOoIl|SB.,·•٫\s;:]+$/.test(String(t.w.text));
  const charWidth=t=>(t.b.x1-t.b.x0)/Math.max(1,String(t.w.text).trim().length);
+ // Capture exact word values independently: an unsuccessful row/run must not erase them.
+ const standalone=[];
+ for(const t of active){if(normalizeTeachingNumber(t.w.text).value!==null){let c=add([t],rows.find(r=>r.tokens.includes(t))?.id??null);c.source='word';standalone.push(c)}}
  for(const row of rows){
   let run=[];
   const flush=()=>{if(!run.length)return;let reason=run.length>16?'Numeric run exceeds 16-token safety limit':run.length>1&&!/[.,·•٫]/.test(run.map(t=>t.w.text).join(''))?'No explicit decimal/group separator; digits are not guessed':'';
-   let c=add(run,row.id,reason);row.runs.push(c.id);
+   let c=add(run,row.id,reason);c.source='run';row.runs.push(c.id);
    if(run.length>1)for(const t of run)add([t],row.id,'Fragment of contiguous numeric run '+c.id);
    run=[];
   };
@@ -475,7 +494,28 @@ function teachingSpatialModel(words){
   flush();
  }
  raw.filter(t=>t.excluded==='Invalid coordinates').forEach(t=>add([t],null,t.excluded));
+ // Only a proved longer number can invalidate a standalone integer/fraction fragment.
+ for(const c of standalone){if(candidates.some(z=>z.source==='run'&&!z.reason&&z.parts.length>1&&z.parts.includes(c.parts[0])&&z.v!==c.v))c.reason='Fragment of a proved reconstructed number'}
+ let kept=[];
+ for(const c of candidates){if(c.reason)continue;let duplicate=kept.find(z=>z.v===c.v&&c.v!==null&&Math.max(0,Math.min(z.b.x1,c.b.x1)-Math.max(z.b.x0,c.b.x0))*Math.max(0,Math.min(z.b.y1,c.b.y1)-Math.max(z.b.y0,c.b.y0))>=.85*Math.min((z.b.x1-z.b.x0)*(z.b.y1-z.b.y0),(c.b.x1-c.b.x0)*(c.b.y1-c.b.y0)));if(duplicate)c.reason='Same physical numeric occurrence as candidate '+duplicate.id;else kept.push(c)}
  return {raw,rows,candidates};
+}
+function teachingExactOccurrences(model,target,bounds){
+ const samePlace=(a,b)=>{let ix=Math.max(0,Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0)),iy=Math.max(0,Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0));return ix*iy>=.85*Math.min((a.x1-a.x0)*(a.y1-a.y0),(b.x1-b.x0)*(b.y1-b.y0))};
+ let exact=model.candidates.filter(c=>!c.reason&&c.v!==null&&Math.abs(c.v-target)<=1e-6).sort((a,b)=>(a.source==='word'?0:1)-(b.source==='word'?0:1)),occurrences=[];
+ for(const c of exact){let old=occurrences.find(o=>samePlace(o.b,c.b));if(old){old.candidateIds.push(c.id);continue}
+  let row=model.rows.find(r=>r.id===c.rowId),h=c.b.y1-c.b.y0;
+  // Labels must be on this physical baseline, to the left, without crossing a numeric column.
+  let left=(row?.tokens||[]).filter(t=>t.b.x1<=c.b.x0&&Math.abs(t.b.cy-c.b.cy)<=Math.min(h,row.h)*.55),barrier=Math.max(-Infinity,...left.filter(t=>normalizeTeachingNumber(t.w.text).value!==null).map(t=>t.b.x1));
+  let labels=left.filter(t=>t.b.x0>=barrier&&/[A-Za-z]/.test(t.w.text)&&!/[\d]/.test(t.w.text)&&!/^[£\dOoIl|SB.,·•٫\s;:]+$/.test(t.w.text)&&normalizeTeachingNumber(t.w.text).value===null).slice(-5),label=labels.map(t=>t.w.text).join(' ').toLowerCase();
+  let problem=!bounds||c.b.x0<0||c.b.y0<0||c.b.x1>bounds.x1||c.b.y1>bounds.y1?'Candidate outside current full-page image':'';
+  if(model.candidates.some(z=>z.source==='word'&&!z.reason&&z.v!==c.v&&samePlace(z.b,c.b)))problem='Conflicting numeric OCR at the same position';
+  occurrences.push({id:c.id,candidateIds:[c.id],parts:c.parts,text:c.w.text,b:c.b,rowId:c.rowId,label,labelTokenIds:labels.map(t=>t.id),columnX:c.b.cx,problem});
+ }
+ return occurrences;
+}
+function teachingOccurrenceHtml(field){
+ return '<p><b>Exact numeric occurrences: '+(field.occurrences?.length||0)+'</b> · position saved: '+(field.saved?'yes':'no')+'</p>'+(field.occurrences||[]).map(o=>'<p>Candidate(s) '+o.candidateIds.join(', ')+' · tokens '+o.parts.join(', ')+' · “'+escDbg(o.text)+'”<br>Centre ('+o.b.cx.toFixed(1)+', '+o.b.cy.toFixed(1)+') · row '+escDbg(o.rowId??'unassigned')+' · column x='+o.columnX.toFixed(1)+'<br>Nearby label: '+escDbg(o.label||'none')+' (tokens '+o.labelTokenIds.join(', ')+')<br>'+escDbg(o.problem||(o.id===field.selected?'Selected; '+(field.saved?'position saved':'position not saved'):field.reason))+'</p>').join('');
 }
 function expandedNumericCandidates(words){return teachingSpatialModel(words).candidates}
 function teachingRawRowsHtml(field,all=false){
@@ -513,14 +553,13 @@ function teachingCandidateTable(field,all=false){
 function showAllTeachingCandidates(index){let el=document.getElementById('teachingCandidates'+index);if(el&&lastTeachingDiagnostic?.fields[index])el.innerHTML=teachingCandidateTable(lastTeachingDiagnostic.fields[index],true)}
 function teachingDiagnosticHtml(){
  let d=lastTeachingDiagnostic;if(!d)return '';
- return '<details open style="margin-top:12px"><summary>DEV bf11.7 manual teaching diagnostics</summary><p>'+d.tokenCount+' coordinate tokens; '+d.candidates.length+' candidate representations examined per field. Exact numeric equality is required after normalization. No missing decimals or digits are invented. Diagnostic values remain in memory on this device and are not stored in the layout profile.</p>'+d.fields.map((f,i)=>'<details'+(f.selected===null&&['tax','gross'].includes(f.field)?' open':'')+'><summary>'+escDbg(f.name)+' — '+escDbg(f.reason)+'</summary><p>Manual value: '+escDbg(f.manual)+' · normalized target: '+escDbg(f.target===null?'not entered':String(f.target))+' · selected candidate: '+escDbg(f.selected===null?'none':String(f.selected))+'</p>'+(f.selected===null?'<div id="teachingRows'+i+'">'+teachingRawRowsHtml(f)+'</div><button type="button" class="soft" onclick="showAllTeachingRows('+i+')">Show all raw rows</button>':'')+'<div id="teachingCandidates'+i+'">'+teachingCandidateTable(f)+'</div><button type="button" class="soft" onclick="showAllTeachingCandidates('+i+')">Show all '+d.candidates.length+' candidates for this field</button></details>').join('')+'</details>';
+ return '<details open style="margin-top:12px"><summary>DEV bf11.8 manual teaching diagnostics</summary><p>'+d.tokenCount+' coordinate tokens; '+d.candidates.length+' candidate representations examined per field. Exact numeric equality is required after normalization. No missing decimals or digits are invented. Diagnostic values remain in memory on this device and are not stored in the layout profile.</p>'+d.fields.map((f,i)=>'<details'+(f.selected===null&&['tax','gross'].includes(f.field)?' open':'')+'><summary>'+escDbg(f.name)+' — '+escDbg(f.reason)+'</summary><p>Manual value: '+escDbg(f.manual)+' · normalized target: '+escDbg(f.target===null?'not entered':String(f.target))+' · selected candidate: '+escDbg(f.selected===null?'none':String(f.selected))+'</p>'+teachingOccurrenceHtml(f)+(f.selected===null?'<div id="teachingRows'+i+'">'+teachingRawRowsHtml(f)+'</div><button type="button" class="soft" onclick="showAllTeachingRows('+i+')">Show all raw rows</button>':'')+'<div id="teachingCandidates'+i+'">'+teachingCandidateTable(f)+'</div><button type="button" class="soft" onclick="showAllTeachingCandidates('+i+')">Show all '+d.candidates.length+' candidates for this field</button></details>').join('')+'</details>';
 }
 
 function teachScannerFromManual(){
  let manualSnapshot=snapshotManualReview();
  let st=document.getElementById('layoutLearningStatus'),words=lastScanFullPageWords;
  const names={basic:'Basic pay',usUnits:'Mon–Sat hours',us:'Mon–Sat amount',sundayUnits:'Sunday hours',sunday:'Sunday amount',otUnits:'OT hours',ot:'Overtime amount',gross:'Gross',tax:'PAYE',ni:'NI',pen:'Pension',net:'Net'};
- const hints={basic:['basic'],usUnits:['unsoc','bas'],us:['unsoc','bas'],sundayUnits:['sunday'],sunday:['sunday'],otUnits:['o/t','hours','t1/2'],ot:['o/t','hours','t1/2'],gross:['gross'],tax:['income','tax'],ni:['national','insur'],pen:['superann','pension'],net:['net']};
  function showResult(title,body,ok){
    st.innerHTML='<div style="margin-top:10px;padding:12px;border-radius:12px;border:2px solid '+(ok?'#12b76a':'#f79009')+';background:'+(ok?'#ecfdf3':'#fffaeb')+'"><strong>'+title+'</strong><div style="margin-top:6px">'+body+'</div></div>';
    let old=document.getElementById('teachResultModal'); if(old) old.remove();
@@ -531,25 +570,26 @@ function teachScannerFromManual(){
  let vals=manualTrainingValues(),bounds=imageCoordinateBounds(lastScanCoordinateSpace),spatial=teachingSpatialModel(words),candidates=spatial.candidates;
  const ids=['aBasic','aUSUnits','aUS','aSundayUnits','aSunday','aOTUnits','aOT','aGross','aTax','aNI','aPen','aNet'];
  let problem=!words.length?'No OCR coordinate tokens available':!bounds?'No verified full-page image dimensions':null;
- lastTeachingDiagnostic={tokenCount:words.length,spatial,previousLayout:learnedLayout,candidates,fields:Object.entries(vals).map(([field,target],i)=>({field,name:names[field]||field,manual:manualSnapshot[ids[i]],target:Number.isFinite(target)?target:null,selected:null,problem:problem||(!Number.isFinite(target)||target<0?'Manual value missing or invalid':null),reason:problem||'Not located'}))};
+ lastTeachingDiagnostic={tokenCount:words.length,spatial,previousLayout:learnedLayout,candidates,fields:Object.entries(vals).map(([field,target],i)=>({field,name:names[field]||field,manual:manualSnapshot[ids[i]],target:Number.isFinite(target)?target:null,selected:null,saved:false,occurrences:[],problem:problem||(!Number.isFinite(target)||target<0?'Manual value missing or invalid':null),reason:problem||'Not located'}))};
  if(problem){lastTeachingDiagnostic.fields.forEach(f=>f.reason=problem);showResult('Teaching could not start',escDbg(problem)+'. Nothing was saved.'+scanDiagnosticHtml(),false);return}
- // Profile diagnostics may contain rejected raw OCR text, but profiles must contain labels only.
- const labelWords=words.filter(w=>! /^[£\dOoIl|SB.,·•٫\s;:]+$/.test(String(w.text)));
  let anchors={},missing=[],ambiguous=[];
+ const associationLabels={basic:/\bbasic\b/,us:/unsoc|mon.*sat/,usUnits:/unsoc|mon.*sat/,sunday:/sunday/,sundayUnits:/sunday/,ot:/overtime|o\/t|\bot\b|t1\/2/,otUnits:/overtime|o\/t|\bot\b|t1\/2/,gross:/gross|total.*pay/,tax:/paye|income.*tax/,ni:/national.*ins|\bni\b/,pen:/pension|superann/,net:/\bnet\b/};
  for(const fd of lastTeachingDiagnostic.fields){
    let {field,target}=fd;
    if(fd.problem){fd.reason=fd.problem;continue}
-   let matches=candidates.filter(x=>!x.reason&&x.v!==null&&Math.abs(x.v-target)<=1e-6);
-   if(!matches.length){fd.reason='No exact normalized numeric match';missing.push(names[field]||field);continue}
-   let ranked=matches.map(x=>{let b=x.b,lab=(nearestLabel(labelWords,b)||'').toLowerCase(),score=0;(hints[field]||[]).forEach(h=>{if(lab.includes(h))score+=3});return {...x,b,lab,score}}).sort((a,b)=>b.score-a.score);
-   let chosen=null;
-   if(ranked.length===1)chosen=ranked[0];
-   else if(ranked[0].score>ranked[1].score)chosen=ranked[0];
-   else {fd.reason='Ambiguous: repeated matching values without a unique field label';ambiguous.push(names[field]||field);continue}
+   fd.occurrences=teachingExactOccurrences(spatial,target,bounds);
+   if(!fd.occurrences.length){fd.reason='No exact normalized numeric match';missing.push(names[field]||field);continue}
+   let trustworthy=fd.occurrences.filter(o=>!o.problem),chosen=null;
+   if(fd.occurrences.length===1&&trustworthy.length===1)chosen=trustworthy[0];
+   else {
+    let labelled=trustworthy.filter(o=>associationLabels[field]?.test(o.label));
+    // Repeated values in the same row/other columns require more evidence than a shared row label.
+    if(labelled.length===1&&!fd.occurrences.some(o=>o!==labelled[0]&&o.rowId===labelled[0].rowId))chosen=labelled[0];
+   }
+   if(!chosen){fd.reason=fd.occurrences.length===1?fd.occurrences[0].problem:'Ambiguous: repeated matching values without independent field/row evidence';ambiguous.push(names[field]||field);continue}
    let b=chosen.b;
-   if(b.x0<0||b.y0<0||b.x1>bounds.x1||b.y1>bounds.y1){fd.reason='Candidate outside current full-page image';missing.push(names[field]||field);continue}
-   fd.selected=chosen.id;fd.reason=ranked.length>1?'Selected using unique field label':'Selected unique numeric candidate';
-   anchors[field]={x:b.cx/bounds.x1,y:b.cy/bounds.y1,w:(b.x1-b.x0)/bounds.x1,h:(b.y1-b.y0)/bounds.y1,label:chosen.lab||''};
+   fd.selected=chosen.id;fd.reason=fd.occurrences.length>1?'Selected using independent field label and physical row':'Selected unique trustworthy exact occurrence';
+   anchors[field]={x:b.cx/bounds.x1,y:b.cy/bounds.y1,w:(b.x1-b.x0)/bounds.x1,h:(b.y1-b.y0)/bounds.y1,label:chosen.label||''};
  }
  // One physical OCR number cannot establish two different payroll fields.
  let selected=lastTeachingDiagnostic.fields.filter(f=>f.selected!==null);
@@ -560,7 +600,7 @@ function teachScannerFromManual(){
  let n=Object.keys(anchors).length,total=Object.values(vals).filter(v=>v!=null).length;
  if(n<3){restoreManualReview(manualSnapshot);showResult('Layout learning incomplete',n+' of '+total+' confirmed values were safely located. <b>No layout profile was saved.</b><br><br>Not located: '+[...missing,...ambiguous].join(', ')+'.',false);return}
  let nextLayout={version:3,profile:'sas_payslip_layout_v1',createdAt:new Date().toISOString(),coordinateSpace:{...lastScanCoordinateSpace,normalization:'full-image',tokenBounds:pageBounds(words)},anchors};
- try{localStorage.setItem('sphq_scanner_layout_v1',JSON.stringify(nextLayout));learnedLayout=nextLayout;layoutStorageStatus='Key present (saved locally)'}catch(e){restoreManualReview(manualSnapshot);showResult('Layout could not be saved',escDbg(e?.message||String(e)),false);return}
+ try{localStorage.setItem('sphq_scanner_layout_v1',JSON.stringify(nextLayout));learnedLayout=nextLayout;layoutStorageStatus='Key present (saved locally)';lastTeachingDiagnostic.fields.forEach(f=>f.saved=!!anchors[f.field])}catch(e){restoreManualReview(manualSnapshot);showResult('Layout could not be saved',escDbg(e?.message||String(e)),false);return}
  let detail=n+' of '+total+' confirmed values were safely located and their normalised positions were saved locally.';
  if(missing.length) detail+='<br><br><b>Not located:</b> '+missing.join(', ')+'.';
  if(ambiguous.length) detail+='<br><b>Ambiguous/repeated:</b> '+ambiguous.join(', ')+'.';
@@ -599,7 +639,7 @@ function applyLearnedLayout(words,found){
  }
  return d.hits;
 }
-async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3bf11.7 OCR Recovery + Stage Diagnostics started. Preserving source pixels and preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
+async function handlePayslipPhoto(file){if(!file)return;isolateNewScan();resetScanReview();scanProgress.classList.add('on');scanProgressTitle.textContent='Scanner v2 started ✓';scanFound.innerHTML='v9.10.3bf11.8 OCR Recovery + Stage Diagnostics started. Preserving source pixels and preparing your payslip securely on this device…';scanProgressBar.style.width='3%';let url=URL.createObjectURL(file);scanImage.src=url;scanPreview.classList.add('on');scanTitle.textContent='Photo added — reading payslip';scanCopy.textContent='Shift Pay HQ is reading the photo on this device. You will review every figure before anything is saved.';toggleManualPayslip(true);await scanPayslip(file)}
 function parseOcrNumber(raw){let x=String(raw||'').replace(/[£,]/g,'').replace(/[Oo](?=\d)/g,'0').replace(/(?<=\d)[Oo]/g,'0').trim();let v=parseFloat(x);return Number.isFinite(v)?v:null}
 function rowNumbers(line){let m=String(line||'').match(/(?:£\s*)?\d[\d,]*(?:\.\d{1,4})/g)||[];return m.map(x=>({raw:x,value:parseOcrNumber(x)})).filter(x=>x.value!==null)}
 function rowAmount(line){let n=rowNumbers(line);if(!n.length)return null;return n[n.length-1].value}

@@ -18,7 +18,7 @@ const elements = {};
 const writes = [];
 const element = id => elements[id] ||= {value:'', innerHTML:'', style:{}, classList:{add(){}}, insertAdjacentHTML(_, value){this.innerHTML+=value}};
 const ctx = vm.createContext({console:{error(){}}, document:{getElementById:element, createElement:()=>element('modal'), body:{appendChild(){}}}, localStorage:{getItem:()=>null,setItem:(k,v)=>writes.push([k,v])}});
-for (const name of ['teachingSpatialModel','teachingRawRowsHtml','showAllTeachingRows','normalizeTeachingNumber','teachingCandidateReason','teachingCandidateTable','teachingDiagnosticHtml','showAllTeachingCandidates','readLearnedLayout','imageCoordinateBounds','learnedLayoutDiagnosticHtml','wordBox','numericWordValue','pageBounds','nearestLabel','fieldNumber','sane','ocrNormalise','fuzzyLabel','markScanField','setScanFieldState','applyLearnedLayout','snapshotManualReview','restoreManualReview','manualTrainingValues','expandedNumericCandidates','teachScannerFromManual','collectOcrWords','escDbg','scanDiagnosticHtml','isolateNewScan','scanPayslip']) vm.runInContext(source(name),ctx);
+for (const name of ['teachingExactOccurrences','teachingOccurrenceHtml','teachingSpatialModel','teachingRawRowsHtml','showAllTeachingRows','normalizeTeachingNumber','teachingCandidateReason','teachingCandidateTable','teachingDiagnosticHtml','showAllTeachingCandidates','readLearnedLayout','imageCoordinateBounds','learnedLayoutDiagnosticHtml','wordBox','numericWordValue','pageBounds','nearestLabel','fieldNumber','sane','ocrNormalise','fuzzyLabel','markScanField','setScanFieldState','applyLearnedLayout','snapshotManualReview','restoreManualReview','manualTrainingValues','expandedNumericCandidates','teachScannerFromManual','collectOcrWords','escDbg','scanDiagnosticHtml','isolateNewScan','scanPayslip']) vm.runInContext(source(name),ctx);
 const run = code => vm.runInContext(code,ctx);
 const word = (text,x,y=10) => ({text,bbox:{x0:x,y0:y,x1:x+30,y1:y+10},conf:95});
 ctx.words=[word('Basic',0),word('1234.56',100),word('edge',300,300)];
@@ -157,7 +157,7 @@ assert.equal(taught.coordinateSpace.width,600);assert.ok(taught.coordinateSpace.
 assert.equal(taught.anchors.basic.x,(180+(187+4*8+16))/2/600);
 for(const anchor of Object.values(taught.anchors))assert.deepEqual(Object.keys(anchor).sort(),['h','label','w','x','y']);
 assert.ok(!JSON.stringify(taught).includes('3210.45'),'no historical payroll answers persisted');
-assert.match(element('layoutLearningStatus').innerHTML,/DEV bf11.7 manual teaching diagnostics/);
+assert.match(element('layoutLearningStatus').innerHTML,/DEV bf11.8 manual teaching diagnostics/);
 assert.match(element('layoutLearningStatus').innerHTML,/numeric equality/i);
 run('showAllTeachingCandidates(0)');assert.match(element('teachingCandidates0').innerHTML,/Selected for layout teaching/);
 // Ambiguous repeats must not replace an old profile, even when the manual target is known.
@@ -190,6 +190,52 @@ run('showAllTeachingRows(8)');assert.match(element('teachingRows8').innerHTML,/9
 run("lastTeachingDiagnostic.previousLayout=null;lastTeachingDiagnostic.spatial=teachingSpatialModel([{text:'<img onerror=bad>',bbox:{x0:0,y0:0,x1:60,y1:20}}])");
 assert.match(run('teachingRawRowsHtml(lastTeachingDiagnostic.fields[8],true)'),/Expected region is unknown/);
 assert.match(run('teachingRawRowsHtml(lastTeachingDiagnostic.fields[8],true)'),/&lt;img/,'raw OCR is HTML escaped');
+// bf11.8: hierarchy boxes must not turn two printed lines into one artificial row.
+ctx.hierarchy=[
+ token('PAYE 1060.07 Gross 5349.63',0,0,400,160),
+ token('PAYE 1060.07',0,10,320,60),token('1060.07',180,0,140,90),
+ token('PAYE',0,30,70,20),token('1060.07',200,31,70,20),
+ token('Gross',0,100,70,20),token('5349.63',200,101,70,20),
+ ...'1060.07'.split('').map((text,i)=>token(text,200+i*10,31,10,20))
+];
+run('hierarchyModel=teachingSpatialModel(hierarchy)');
+assert.equal(run('hierarchyModel.rows.length'),2,'large parent/line boxes excluded before row clustering');
+assert.ok(run('hierarchyModel.raw[0].excluded.includes("Parent")'));
+assert.equal(run('hierarchyModel.raw.filter(t=>!t.excluded&&t.w.text==="1060.07").length'),1,'complete tight word preferred to parent and glyphs');
+assert.equal(run('teachingExactOccurrences(hierarchyModel,1060.07,{x1:600,y1:10000}).length'),1,'word/run/hierarchy duplicates are one occurrence');
+const persistedBeforeHierarchy=writes.length;
+fields.forEach(id=>element(id).value='');element('aTax').value='1060.07';element('aGross').value='5349.63';element('aPen').value='345.67';
+ctx.hierarchy.push(token('345.67',200,180,70,20)); // unique amount without a readable label
+run('lastScanFullPageWords=hierarchy;teachScannerFromManual()');
+assert.equal(writes.length,persistedBeforeHierarchy+1);
+assert.equal(run('lastTeachingDiagnostic.fields.find(f=>f.field==="tax").occurrences.length'),1);
+assert.equal(run('lastTeachingDiagnostic.fields.find(f=>f.field==="tax").saved'),true);
+assert.equal(run('lastTeachingDiagnostic.fields.find(f=>f.field==="pen").saved'),true,'unique exact occurrence does not need perfect label rows');
+assert.equal(run('learnedLayout.anchors.tax.x'),235/600,'position uses tight word centre, not large parent');
+assert.match(element('layoutLearningStatus').innerHTML,/Exact numeric occurrences: 1/);
+assert.match(element('layoutLearningStatus').innerHTML,/Centre \(235.0, 41.0\)/);
+assert.match(element('layoutLearningStatus').innerHTML,/position saved: yes/);
+assert.equal(element('aTax').value,'1060.07');
+// Equal values in distinct columns on the same OT row remain ambiguous, not leftmost wins.
+fields.forEach(id=>element(id).value='');element('aOTUnits').value='27.00';
+ctx.repeated27=[token('Overtime',0,20,80,20),token('27.00',140,20,50,20),token('27.00',300,20,50,20)];
+const persistedBeforeRepeat=writes.length;
+run('lastScanFullPageWords=repeated27;teachScannerFromManual()');
+assert.equal(writes.length,persistedBeforeRepeat);
+assert.equal(run('lastTeachingDiagnostic.fields.find(f=>f.field==="otUnits").occurrences.length'),2);
+assert.equal(run('lastTeachingDiagnostic.fields.find(f=>f.field==="otUnits").saved'),false);
+assert.match(run('lastTeachingDiagnostic.fields.find(f=>f.field==="otUnits").reason'),/Ambiguous/);
+ctx.repeated27=[token('Hours',0,20,80,20),token('27.00',140,20,50,20),token('Hours',0,80,80,20),token('27.00',140,80,50,20)];
+run('lastScanFullPageWords=repeated27;teachScannerFromManual()');
+assert.equal(writes.length,persistedBeforeRepeat,'generic hours labels cannot resolve OT repeats');
+// A damaged neighbouring run cannot suppress a complete exact token.
+ctx.intact=[token('££',180,20,18,20),token('1060.07',200,20,70,20)];
+run('intactModel=teachingSpatialModel(intact)');
+assert.equal(run('teachingExactOccurrences(intactModel,1060.07,{x1:600,y1:10000}).length'),1);
+// Overlapping conflicting OCR words do not establish a trustworthy unique occurrence.
+ctx.conflict=[token('1060.07',200,20,70,20),token('1060.01',200,20,70,20)];
+run('conflictModel=teachingSpatialModel(conflict)');
+assert.match(run('teachingExactOccurrences(conflictModel,1060.07,{x1:600,y1:10000})[0].problem'),/Conflicting/);
 run('lastScanFullPageWords=words;lastScanEvidenceWords=words;isolateNewScan()');
 assert.equal(run('lastScanFullPageWords.length+lastScanEvidenceWords.length'),0,'new scan clears stale coordinates');
 // Exercise the actual orchestration with local fake OCR and deliberate failures.
