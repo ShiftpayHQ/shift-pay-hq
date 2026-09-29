@@ -12,7 +12,7 @@ function source(name){
  throw Error(name);
 }
 const ctx=vm.createContext({});const run=s=>vm.runInContext(s,ctx);
-for(const name of ['earningsStructureAudit','earningsStructureAuditHtml','teachingPayeFocusedHtml','spatialRows','kindFromSpatialRow','wordCenterX','earningsRegionAnchor','rowInsideEarningsRegion','adaptiveHeaderGeometry','teachingSpatialModel','teachingPhysicalOccurrences','teachingSamePhysical','teachingExactOccurrences','teachingCandidateReason','wordBox','normalizeTeachingNumber','fuzzyLabel','ocrNormalise','escDbg'])run(source(name));
+for(const name of ['productionGroupingEvidence','earningsHeadingGateEvidence','earningsStructureAudit','earningsStructureAuditHtml','teachingPayeFocusedHtml','spatialRows','kindFromSpatialRow','wordCenterX','earningsRegionAnchor','rowInsideEarningsRegion','adaptiveHeaderGeometry','teachingSpatialModel','teachingPhysicalOccurrences','teachingSamePhysical','teachingExactOccurrences','teachingCandidateReason','wordBox','normalizeTeachingNumber','fuzzyLabel','ocrNormalise','escDbg'])run(source(name));
 const token=(text,x,y,width=text.length*8,conf=95)=>({text,conf,bbox:{x0:x,y0:y,x1:x+width,y1:y+20}});
 // Synthetic full-page coordinates: split words and stacked Hours worked / Units paid.
 // Only the total count (1411), not the token contents, came from the device report.
@@ -83,4 +83,24 @@ assert.equal(run('payeOccurrences.length'),2,'separate positions remain separate
 ctx.noPaye=[token('1060',3275,541),token('07',3350,541)];
 run('lastTeachingDiagnostic={spatial:teachingSpatialModel(noPaye)};field={field:"tax",target:1060.07,occurrences:[],selected:null,saved:false,reason:"No exact normalized numeric match"}');
 assert.match(run('teachingPayeFocusedHtml(field)'),/No normalized-equal candidate exists/);
-console.log('PASS: header early exit, 1411-token fragmented/stacked reconstruction, confidence loss, fixed-pixel gates, column ambiguity, unchanged evidence/acceptance, escaped diagnostics and PAYE lineage.');
+// bf11.12: per-heading production gate ledger, including the body-row blocker.
+ctx.gateWords=[token('Rate',450,20),...ctx.jitterWords];
+run('gateAudit=earningsStructureAudit(gateWords);grouping=productionGroupingEvidence(gateWords,gateWords.map((w,id)=>id));heading=gateAudit.headers.find(h=>h.joined==="rate"&&h.accepted);gates=earningsHeadingGateEvidence(heading,gateAudit,grouping)');
+assert.match(run('gates.headerPrerequisite'),/NOT REACHED/);
+assert.match(run('gates.regexGate'),/not expected to become labelled earnings rows/,'header role is not confused with a body description');
+assert.ok(run('gates.fragmentedBodyRows.some(r=>r.grouping.some(t=>t.nearestRejected.some(g=>g.dist===18&&g.limit===17&&g.reason.includes("17px"))))'),'exact pre-section grouping measurements show why Basic fragments split');
+assert.match(run('gates.headerWindow520'),/Not evaluated/,'a downstream gate is not blamed when it was never reached');
+assert.match(run('gates.regionGate.path'),/Separate/);
+const gateBefore=JSON.stringify(ctx.gateWords);
+assert.match(run('earningsStructureAuditHtml(gateWords,"gate fixture")'),/Diagnostic headings versus production gates/);
+assert.equal(JSON.stringify(ctx.gateWords),gateBefore);
+ctx.gateWords=[token('Ra',100,10),token('te',116,10)];
+run('gateAudit=earningsStructureAudit(gateWords);grouping=productionGroupingEvidence(gateWords,[0,1]);gates=earningsHeadingGateEvidence(gateAudit.headers.find(h=>h.joined==="rate"),gateAudit,grouping)');
+assert.ok(run('gates.headerVocabulary.every(t=>!t.wholeTokenMatches)'),'diagnostic fragment joining does not alter whole-token vocabulary');
+ctx.gateWords=[token('Rate',100,10,32,19)];
+run('gateAudit=earningsStructureAudit(gateWords);gates=earningsHeadingGateEvidence(gateAudit.headers[0],gateAudit,productionGroupingEvidence(gateWords,[0]))');
+assert.match(run('gates.confidenceGate[0].reason'),/below 20/);
+assert.equal(run('gates.rowGrouping.length'),0,'confidence filtering occurs before row grouping');
+run('gateAudit=earningsStructureAudit(windowWords);gates=earningsHeadingGateEvidence(gateAudit.headers.find(h=>h.joined==="rate"),gateAudit,productionGroupingEvidence(windowWords,[2]))');
+assert.equal(run('gates.headerWindow520[0].passed'),false);
+console.log('PASS: header early exit, 1411-token fragmented/stacked reconstruction, per-heading confidence/17px/regex/region/520px gate ledger, column ambiguity, unchanged evidence/acceptance, escaped diagnostics and PAYE lineage.');
