@@ -1,0 +1,9 @@
+{
+  "description": "Reported bf11.9 PAYE candidate IDs, value and approximate x0/y0. Width, height, token IDs and source types are synthetic because the complete iPhone stream and reason strings were not supplied.",
+  "target": 1060.07,
+  "bounds": {"x1": 4200, "y1": 6000},
+  "representations": [
+    {"id": 44, "text": "1060.07", "parts": [18], "source": "word", "bbox": {"x0": 3275, "y0": 541, "x1": 3520, "y1": 581}},
+    {"id": 357, "text": "1060.07", "parts": [18], "source": "run", "bbox": {"x0": 3275, "y0": 541, "x1": 3520, "y1": 581}}
+  ]
+}

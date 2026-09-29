@@ -18,7 +18,7 @@ const elements = {};
 const writes = [];
 const element = id => elements[id] ||= {value:'', innerHTML:'', style:{}, classList:{add(){}}, insertAdjacentHTML(_, value){this.innerHTML+=value}};
 const ctx = vm.createContext({console:{error(){}}, document:{getElementById:element, createElement:()=>element('modal'), body:{appendChild(){}}}, localStorage:{getItem:()=>null,setItem:(k,v)=>writes.push([k,v])}});
-for (const name of ['teachingPipeline','teachingPipelineHtml','teachingSpatialModelBf117','teachingExactOccurrences','teachingOccurrenceHtml','teachingSpatialModel','teachingRawRowsHtml','showAllTeachingRows','normalizeTeachingNumber','teachingCandidateReason','teachingCandidateTable','teachingDiagnosticHtml','showAllTeachingCandidates','readLearnedLayout','imageCoordinateBounds','learnedLayoutDiagnosticHtml','wordBox','numericWordValue','pageBounds','nearestLabel','fieldNumber','sane','ocrNormalise','fuzzyLabel','markScanField','setScanFieldState','applyLearnedLayout','snapshotManualReview','restoreManualReview','manualTrainingValues','expandedNumericCandidates','teachScannerFromManual','collectOcrWords','escDbg','scanDiagnosticHtml','isolateNewScan','scanPayslip']) vm.runInContext(source(name),ctx);
+for (const name of ['teachingSamePhysical','teachingPhysicalOccurrences','teachingPipeline','teachingPipelineHtml','teachingSpatialModelBf117','teachingExactOccurrences','teachingOccurrenceHtml','teachingSpatialModel','teachingRawRowsHtml','showAllTeachingRows','normalizeTeachingNumber','teachingCandidateReason','teachingCandidateTable','teachingDiagnosticHtml','showAllTeachingCandidates','readLearnedLayout','imageCoordinateBounds','learnedLayoutDiagnosticHtml','wordBox','numericWordValue','pageBounds','nearestLabel','fieldNumber','sane','ocrNormalise','fuzzyLabel','markScanField','setScanFieldState','applyLearnedLayout','snapshotManualReview','restoreManualReview','manualTrainingValues','expandedNumericCandidates','teachScannerFromManual','collectOcrWords','escDbg','scanDiagnosticHtml','isolateNewScan','scanPayslip']) vm.runInContext(source(name),ctx);
 const run = code => vm.runInContext(code,ctx);
 const word = (text,x,y=10) => ({text,bbox:{x0:x,y0:y,x1:x+30,y1:y+10},conf:95});
 ctx.words=[word('Basic',0),word('1234.56',100),word('edge',300,300)];
@@ -157,7 +157,7 @@ assert.equal(taught.coordinateSpace.width,600);assert.ok(taught.coordinateSpace.
 assert.equal(taught.anchors.basic.x,(180+(187+4*8+16))/2/600);
 for(const anchor of Object.values(taught.anchors))assert.deepEqual(Object.keys(anchor).sort(),['h','label','w','x','y']);
 assert.ok(!JSON.stringify(taught).includes('3210.45'),'no historical payroll answers persisted');
-assert.match(element('layoutLearningStatus').innerHTML,/DEV bf11.9 manual teaching diagnostics/);
+assert.match(element('layoutLearningStatus').innerHTML,/DEV bf11.10 manual teaching diagnostics/);
 assert.match(element('layoutLearningStatus').innerHTML,/numeric equality/i);
 run('showAllTeachingCandidates(0)');assert.match(element('teachingCandidates0').innerHTML,/Selected for layout teaching/);
 // Ambiguous repeats must not replace an old profile, even when the manual target is known.
@@ -236,21 +236,21 @@ assert.equal(run('teachingExactOccurrences(intactModel,1060.07,{x1:600,y1:10000}
 ctx.conflict=[token('1060.07',200,20,70,20),token('1060.01',200,20,70,20)];
 run('conflictModel=teachingSpatialModel(conflict)');
 assert.match(run('teachingExactOccurrences(conflictModel,1060.07,{x1:600,y1:10000})[0].problem'),/Conflicting/);
-// bf11.9: reproduce incomplete-child hierarchy loss and retain rejected evidence visibly.
+// bf11.10: a height ratio alone must not discard a complete standalone decimal.
 ctx.partialHierarchy=[token('1060.07',200,20,70,60),token('1060',200,30,40,20),token('07',250,30,20,20)];
 run('lossModel=teachingSpatialModel(partialHierarchy);oldLossModel=teachingSpatialModelBf117(partialHierarchy)');
 assert.ok(run('oldLossModel.candidates.some(c=>!c.reason&&c.v===1060.07)'), 'bf11.7 retains the complete amount');
-assert.equal(run('lossModel.candidates.filter(c=>!c.reason&&c.v===1060.07).length'),0,'bf11.8 selection unchanged in diagnostic build');
+assert.equal(run('lossModel.candidates.filter(c=>!c.reason&&c.v===1060.07).length'),1,'standalone decimal survives the false multiline inference');
 assert.match(run('lossModel.raw[0].excluded'),/Parent spans child baselines/);
 assert.equal(run('lossModel.raw[0].against.join(",")'),'1,2');
-assert.ok(run('lossModel.candidates.some(c=>c.source==="dedup-audit"&&c.v===1060.07&&c.b.x1>c.b.x0&&c.b.y1>c.b.y0&&c.reason.includes("no equivalent retained numeric replacement"))'),'removed standalone evidence has an explicit quarantined replacement with original geometry');
+assert.ok(run('lossModel.candidates.some(c=>c.source==="word"&&c.v===1060.07&&c.b.x1>c.b.x0&&c.b.y1>c.b.y0&&c.recovery)'),'standalone evidence retains its original geometry and exclusion history');
 fields.forEach(id=>element(id).value='');element('aTax').value='1060.07';
 run('lastScanFullPageWords=partialHierarchy;teachScannerFromManual()');
 assert.match(element('layoutLearningStatus').innerHTML,/PAYE 1060.07 regression trace/);
-assert.match(run('teachingPipeline(lastTeachingDiagnostic.fields[8]).verdict'),/present raw → removed during deduplication/);
+assert.match(run('teachingPipeline(lastTeachingDiagnostic.fields[8]).verdict'),/exact unique match exists → selected/);
 assert.equal(run('teachingPipeline(lastTeachingDiagnostic.fields[8]).legacy.length'),1);
-assert.equal(run('lastTeachingDiagnostic.fields[8].selected'),null);
-assert.match(element('layoutLearningStatus').innerHTML,/no equivalent retained numeric replacement/);
+assert.notEqual(run('lastTeachingDiagnostic.fields[8].selected'),null);
+assert.match(element('layoutLearningStatus').innerHTML,/Complete standalone decimal retained/);
 // Every valid excluded numeric token must have equivalent usable evidence, either
 // an accepted contained replacement or an explicitly rejected diagnostic replacement.
 for(const fixture of ['hierarchy','partialHierarchy','intact','conflict']){
@@ -262,12 +262,56 @@ for(const fixture of ['hierarchy','partialHierarchy','intact','conflict']){
   return ids.length&&ids.every(id=>{const c=m.candidates[id];return c&&c.v===v&&c.b.x1>c.b.x0&&c.b.y1>c.b.y0&&(!c.reason||c.source==='dedup-audit')});
  })`),fixture+' cannot silently lose standalone numeric evidence');
 }
+// Reported candidate IDs/coordinates, with unspecified geometry explicitly synthetic.
+const iphone=require('./iphone-teaching-fixture.json');
+ctx.iphone=iphone;
+run(`iphoneModel={raw:[],rows:[],candidates:iphone.representations.map(r=>({id:r.id,w:{text:r.text,bbox:r.bbox},b:wordBox(r),parts:r.parts,source:r.source,rowId:null,v:normalizeTeachingNumber(r.text).value,normalized:r.text,reason:''}))}`);
+assert.equal(run('teachingExactOccurrences(iphoneModel,iphone.target,iphone.bounds).length'),1);
+assert.equal(run('teachingExactOccurrences(iphoneModel,iphone.target,iphone.bounds)[0].candidateIds.join(",")'),'44,357');
+// Duplicate annotations are provenance, never a reason to erase the occurrence.
+run('iphoneModel.candidates.forEach(c=>c.reason="Same physical numeric occurrence as candidate 44")');
+assert.equal(run('teachingExactOccurrences(iphoneModel,iphone.target,iphone.bounds).length'),1);
+// Small geometry jitter and independent raw tokens collapse without losing provenance.
+for(const amount of ['1060.07','210.98','345.67','2999.01','5349.63']){
+ ctx.amount=Number(amount);
+ ctx.duplicateWords=[token(amount,3275,541,245,40),token(amount,3276,542,245,40)];
+ run('decimalModel=teachingSpatialModel(duplicateWords);decimalOccurrences=teachingExactOccurrences(decimalModel,amount,iphone.bounds)');
+ assert.equal(run('decimalOccurrences.length'),1,amount);
+ assert.equal(run('decimalOccurrences[0].parts.length'),2,'both raw token IDs preserved');
+ assert.ok(run('decimalOccurrences[0].candidateIds.length>=2'),'word/run candidate IDs preserved');
+ // Same amount in a neighbouring column or separate row is two printed occurrences.
+ for(const [x,y] of [[3530,541],[3275,610]]){
+  ctx.duplicateWords.push(token(amount,x,y,245,40));
+  assert.equal(run('teachingExactOccurrences(teachingSpatialModel(duplicateWords),amount,iphone.bounds).length'),2);
+  ctx.duplicateWords.pop();
+ }
+}
+// End-to-end version of the reproduced zero path: duplicated complete amount plus
+// partial child evidence. bf11.9 quarantined both copies; bf11.10 selects one.
+ctx.duplicateLoss=[token('1060.07',3275,541,245,80),token('1060.07',3275,541,245,80),token('1060',3275,550,140,25),token('07',3450,550,70,25)];
+run("lastScanCoordinateSpace={kind:'full-page-enhanced-v1',width:4200,height:6000};lastScanFullPageWords=duplicateLoss;teachScannerFromManual()");
+assert.equal(run('lastTeachingDiagnostic.fields[8].occurrences.length'),1);
+assert.notEqual(run('lastTeachingDiagnostic.fields[8].selected'),null);
+assert.match(element('layoutLearningStatus').innerHTML,/PHYSICAL OCCURRENCES: 3 \/ 3/);
+assert.match(element('layoutLearningStatus').innerHTML,/collapsed candidate IDs/);
+assert.equal(element('aTax').value,'1060.07');
+assert.equal(run('lastTeachingDiagnostic.fields[8].saved'),false,'one anchor still cannot save a profile');
+ctx.conflictingChild=[...ctx.duplicateLoss,token('1060.01',3275,550,245,25)];
+assert.match(run('teachingExactOccurrences(teachingSpatialModel(conflictingChild),1060.07,iphone.bounds)[0].problem'),/Conflicting/,'a different complete decimal inside the recovered box still conflicts');
+// Actual multiple baselines must remain quarantined, not rescued by the manual target.
+ctx.multiline=[token('1060.07',200,20,70,90),token('1060',200,25,40,20),token('07',250,80,20,20)];
+assert.equal(run('teachingExactOccurrences(teachingSpatialModel(multiline),1060.07,iphone.bounds).length'),0);
+ctx.invalid=[token('1060.07',200,20,0,20)];
+assert.equal(run('teachingExactOccurrences(teachingSpatialModel(invalid),1060.07,iphone.bounds).length'),0);
+// Grouping must not bridge distinct locations through a chain of overlap.
+ctx.chain=[token('27.00',100,20,100,20),token('27.00',114,20,100,20),token('27.00',128,20,100,20)];
+assert.equal(run('teachingExactOccurrences(teachingSpatialModel(chain),27,iphone.bounds).length'),2);
 ctx.traceCases=[[],[token('1060.07',200,20,70,20)],[token('1060.07',-20,20,70,20)],ctx.conflict];
 for(const [i,pattern] of [/not present in raw OCR/,/exact unique match exists → selected/,/rejected by geometry\/ambiguity/,/Conflicting numeric OCR/].entries()){
  ctx.caseWords=ctx.traceCases[i];run('lastScanFullPageWords=caseWords;teachScannerFromManual()');
  // With no collected tokens the teaching prerequisite explicitly blocks the pipeline.
  assert.match(run('teachingPipeline(lastTeachingDiagnostic.fields[8]).verdict'),i===0?/No OCR coordinate tokens/:pattern);
- assert.equal(run('teachingPipeline(lastTeachingDiagnostic.fields[8]).stages.length'),6);
+ assert.equal(run('teachingPipeline(lastTeachingDiagnostic.fields[8]).stages.length'),7);
 }
 run('lastScanFullPageWords=words;lastScanEvidenceWords=words;isolateNewScan()');
 assert.equal(run('lastScanFullPageWords.length+lastScanEvidenceWords.length'),0,'new scan clears stale coordinates');
