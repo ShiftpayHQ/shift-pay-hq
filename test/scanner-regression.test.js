@@ -18,7 +18,7 @@ const elements = {};
 const writes = [];
 const element = id => elements[id] ||= {value:'', innerHTML:'', style:{}, classList:{add(){}}, insertAdjacentHTML(_, value){this.innerHTML+=value}};
 const ctx = vm.createContext({console:{error(){}}, document:{getElementById:element, createElement:()=>element('modal'), body:{appendChild(){}}}, localStorage:{getItem:()=>null,setItem:(k,v)=>writes.push([k,v])}});
-for (const name of ['teachingExactOccurrences','teachingOccurrenceHtml','teachingSpatialModel','teachingRawRowsHtml','showAllTeachingRows','normalizeTeachingNumber','teachingCandidateReason','teachingCandidateTable','teachingDiagnosticHtml','showAllTeachingCandidates','readLearnedLayout','imageCoordinateBounds','learnedLayoutDiagnosticHtml','wordBox','numericWordValue','pageBounds','nearestLabel','fieldNumber','sane','ocrNormalise','fuzzyLabel','markScanField','setScanFieldState','applyLearnedLayout','snapshotManualReview','restoreManualReview','manualTrainingValues','expandedNumericCandidates','teachScannerFromManual','collectOcrWords','escDbg','scanDiagnosticHtml','isolateNewScan','scanPayslip']) vm.runInContext(source(name),ctx);
+for (const name of ['teachingPipeline','teachingPipelineHtml','teachingSpatialModelBf117','teachingExactOccurrences','teachingOccurrenceHtml','teachingSpatialModel','teachingRawRowsHtml','showAllTeachingRows','normalizeTeachingNumber','teachingCandidateReason','teachingCandidateTable','teachingDiagnosticHtml','showAllTeachingCandidates','readLearnedLayout','imageCoordinateBounds','learnedLayoutDiagnosticHtml','wordBox','numericWordValue','pageBounds','nearestLabel','fieldNumber','sane','ocrNormalise','fuzzyLabel','markScanField','setScanFieldState','applyLearnedLayout','snapshotManualReview','restoreManualReview','manualTrainingValues','expandedNumericCandidates','teachScannerFromManual','collectOcrWords','escDbg','scanDiagnosticHtml','isolateNewScan','scanPayslip']) vm.runInContext(source(name),ctx);
 const run = code => vm.runInContext(code,ctx);
 const word = (text,x,y=10) => ({text,bbox:{x0:x,y0:y,x1:x+30,y1:y+10},conf:95});
 ctx.words=[word('Basic',0),word('1234.56',100),word('edge',300,300)];
@@ -157,7 +157,7 @@ assert.equal(taught.coordinateSpace.width,600);assert.ok(taught.coordinateSpace.
 assert.equal(taught.anchors.basic.x,(180+(187+4*8+16))/2/600);
 for(const anchor of Object.values(taught.anchors))assert.deepEqual(Object.keys(anchor).sort(),['h','label','w','x','y']);
 assert.ok(!JSON.stringify(taught).includes('3210.45'),'no historical payroll answers persisted');
-assert.match(element('layoutLearningStatus').innerHTML,/DEV bf11.8 manual teaching diagnostics/);
+assert.match(element('layoutLearningStatus').innerHTML,/DEV bf11.9 manual teaching diagnostics/);
 assert.match(element('layoutLearningStatus').innerHTML,/numeric equality/i);
 run('showAllTeachingCandidates(0)');assert.match(element('teachingCandidates0').innerHTML,/Selected for layout teaching/);
 // Ambiguous repeats must not replace an old profile, even when the manual target is known.
@@ -236,6 +236,39 @@ assert.equal(run('teachingExactOccurrences(intactModel,1060.07,{x1:600,y1:10000}
 ctx.conflict=[token('1060.07',200,20,70,20),token('1060.01',200,20,70,20)];
 run('conflictModel=teachingSpatialModel(conflict)');
 assert.match(run('teachingExactOccurrences(conflictModel,1060.07,{x1:600,y1:10000})[0].problem'),/Conflicting/);
+// bf11.9: reproduce incomplete-child hierarchy loss and retain rejected evidence visibly.
+ctx.partialHierarchy=[token('1060.07',200,20,70,60),token('1060',200,30,40,20),token('07',250,30,20,20)];
+run('lossModel=teachingSpatialModel(partialHierarchy);oldLossModel=teachingSpatialModelBf117(partialHierarchy)');
+assert.ok(run('oldLossModel.candidates.some(c=>!c.reason&&c.v===1060.07)'), 'bf11.7 retains the complete amount');
+assert.equal(run('lossModel.candidates.filter(c=>!c.reason&&c.v===1060.07).length'),0,'bf11.8 selection unchanged in diagnostic build');
+assert.match(run('lossModel.raw[0].excluded'),/Parent spans child baselines/);
+assert.equal(run('lossModel.raw[0].against.join(",")'),'1,2');
+assert.ok(run('lossModel.candidates.some(c=>c.source==="dedup-audit"&&c.v===1060.07&&c.b.x1>c.b.x0&&c.b.y1>c.b.y0&&c.reason.includes("no equivalent retained numeric replacement"))'),'removed standalone evidence has an explicit quarantined replacement with original geometry');
+fields.forEach(id=>element(id).value='');element('aTax').value='1060.07';
+run('lastScanFullPageWords=partialHierarchy;teachScannerFromManual()');
+assert.match(element('layoutLearningStatus').innerHTML,/PAYE 1060.07 regression trace/);
+assert.match(run('teachingPipeline(lastTeachingDiagnostic.fields[8]).verdict'),/present raw → removed during deduplication/);
+assert.equal(run('teachingPipeline(lastTeachingDiagnostic.fields[8]).legacy.length'),1);
+assert.equal(run('lastTeachingDiagnostic.fields[8].selected'),null);
+assert.match(element('layoutLearningStatus').innerHTML,/no equivalent retained numeric replacement/);
+// Every valid excluded numeric token must have equivalent usable evidence, either
+// an accepted contained replacement or an explicitly rejected diagnostic replacement.
+for(const fixture of ['hierarchy','partialHierarchy','intact','conflict']){
+ ctx.fixture=ctx[fixture];
+ assert.ok(run(`teachingSpatialModel(fixture).raw.every(t=>{
+  const v=normalizeTeachingNumber(t.w.text).value;
+  if(!t.excluded||v===null||!(t.b.x1>t.b.x0&&t.b.y1>t.b.y0))return true;
+  const m=teachingSpatialModel(fixture),ids=t.replacementIds.length?t.replacementIds:[t.auditCandidateId];
+  return ids.length&&ids.every(id=>{const c=m.candidates[id];return c&&c.v===v&&c.b.x1>c.b.x0&&c.b.y1>c.b.y0&&(!c.reason||c.source==='dedup-audit')});
+ })`),fixture+' cannot silently lose standalone numeric evidence');
+}
+ctx.traceCases=[[],[token('1060.07',200,20,70,20)],[token('1060.07',-20,20,70,20)],ctx.conflict];
+for(const [i,pattern] of [/not present in raw OCR/,/exact unique match exists → selected/,/rejected by geometry\/ambiguity/,/Conflicting numeric OCR/].entries()){
+ ctx.caseWords=ctx.traceCases[i];run('lastScanFullPageWords=caseWords;teachScannerFromManual()');
+ // With no collected tokens the teaching prerequisite explicitly blocks the pipeline.
+ assert.match(run('teachingPipeline(lastTeachingDiagnostic.fields[8]).verdict'),i===0?/No OCR coordinate tokens/:pattern);
+ assert.equal(run('teachingPipeline(lastTeachingDiagnostic.fields[8]).stages.length'),6);
+}
 run('lastScanFullPageWords=words;lastScanEvidenceWords=words;isolateNewScan()');
 assert.equal(run('lastScanFullPageWords.length+lastScanEvidenceWords.length'),0,'new scan clears stale coordinates');
 // Exercise the actual orchestration with local fake OCR and deliberate failures.
