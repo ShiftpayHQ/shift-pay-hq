@@ -1,9 +1,14 @@
 {
-  "description": "Reported bf11.9 PAYE candidate IDs, value and approximate x0/y0. Width, height, token IDs and source types are synthetic because the complete iPhone stream and reason strings were not supplied.",
+  "description": "bf11.12 device evidence: candidates 44/357 share raw token 687, value 1060.07, row 54 and approximate centre (3394.5,564). Exact group count is one, collapsed IDs are [44,357], and the device reports same-position conflict. No conflicting counterpart was supplied. Bounds below are inferred from the approximate centre and earlier approximate x0/y0, not a complete device box. word/run source types model the standard construction path; the actual source flags are not in the report.",
   "target": 1060.07,
+  "rawToken": {"id": 687, "text": "1060.07"},
+  "rowId": 54,
+  "reportedLabel": "c m t a x",
+  "reportedFinalReason": "Conflicting numeric OCR at the same position",
+  "reportedConflictingCounterpart": null,
   "bounds": {"x1": 4200, "y1": 6000},
   "representations": [
-    {"id": 44, "text": "1060.07", "parts": [18], "source": "word", "bbox": {"x0": 3275, "y0": 541, "x1": 3520, "y1": 581}},
-    {"id": 357, "text": "1060.07", "parts": [18], "source": "run", "bbox": {"x0": 3275, "y0": 541, "x1": 3520, "y1": 581}}
+    {"id": 44, "text": "1060.07", "parts": [687], "source": "word", "bbox": {"x0": 3275, "y0": 541, "x1": 3514, "y1": 587}},
+    {"id": 357, "text": "1060.07", "parts": [687], "source": "run", "bbox": {"x0": 3275, "y0": 541, "x1": 3514, "y1": 587}}
   ]
 }
