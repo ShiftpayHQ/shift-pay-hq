@@ -12,7 +12,7 @@ function source(name){
  throw Error(name);
 }
 const ctx=vm.createContext({});const run=s=>vm.runInContext(s,ctx);
-for(const name of ['productionGroupingEvidence','earningsHeadingGateEvidence','earningsStructureAudit','earningsStructureAuditHtml','teachingPayeFocusedHtml','spatialRows','kindFromSpatialRow','wordCenterX','earningsRegionAnchor','rowInsideEarningsRegion','adaptiveHeaderGeometry','teachingSpatialModel','teachingPhysicalOccurrences','teachingSamePhysical','teachingExactOccurrences','teachingCandidateReason','wordBox','normalizeTeachingNumber','fuzzyLabel','ocrNormalise','escDbg'])run(source(name));
+for(const name of ['productionGroupingEvidence','earningsHeadingGateEvidence','earningsLabelSuspects','earningsLabelSuspectsHtml','earningsStructureAudit','earningsStructureAuditHtml','teachingPayeFocusedHtml','spatialRows','kindFromSpatialRow','wordCenterX','earningsRegionAnchor','rowInsideEarningsRegion','adaptiveHeaderGeometry','teachingSpatialModel','teachingPhysicalOccurrences','teachingSamePhysical','teachingExactOccurrences','teachingCandidateReason','wordBox','normalizeTeachingNumber','fuzzyLabel','ocrNormalise','escDbg'])run(source(name));
 const token=(text,x,y,width=text.length*8,conf=95)=>({text,conf,bbox:{x0:x,y0:y,x1:x+width,y1:y+20}});
 // Synthetic full-page coordinates: split words and stacked Hours worked / Units paid.
 // Only the total count (1411), not the token contents, came from the device report.
@@ -103,4 +103,62 @@ assert.match(run('gates.confidenceGate[0].reason'),/below 20/);
 assert.equal(run('gates.rowGrouping.length'),0,'confidence filtering occurs before row grouping');
 run('gateAudit=earningsStructureAudit(windowWords);gates=earningsHeadingGateEvidence(gateAudit.headers.find(h=>h.joined==="rate"),gateAudit,productionGroupingEvidence(windowWords,[2]))');
 assert.equal(run('gates.headerWindow520[0].passed'),false);
-console.log('PASS: header early exit, 1411-token fragmented/stacked reconstruction, per-heading confidence/17px/regex/region/520px gate ledger, column ambiguity, unchanged evidence/acceptance, escaped diagnostics and PAYE lineage.');
+// Compact suspects use this same captured audit, including confidence rejects.
+ctx.suspectWords=[token('Ba',0,100,16,19),token('sic',16,100,24),token('Pay',40,100,24),token('Saturday',0,150),token('enhanced',0,200),token('hours',70,200),token('OT',0,250),token('noise',0,300),token('Rate',400,20),token('Amount',500,20)];
+const suspectBefore=JSON.stringify(ctx.suspectWords);
+run('suspectAudit=earningsStructureAudit(suspectWords);suspects=earningsLabelSuspects(suspectAudit)');
+assert.ok(run('suspects.some(s=>s.neighbouringReconstructions.some(j=>j.joined==="basicpay"&&j.tokenIds.join(",")==="0,1,2"))'));
+assert.ok(run('suspects.some(s=>s.confidenceRemovedTokenIds.includes(0))'));
+assert.ok(run('suspects.some(s=>s.productionRowId===null&&s.tokens[0].id===0&&s.rejectionReason.includes("below 20"))'));
+assert.ok(run('suspects.some(s=>s.exactText==="sic Pay"&&s.kindFromSpatialRow===null&&s.rejectionReason.includes("returned null"))'));
+assert.ok(run('suspects.some(s=>s.exactText==="Saturday"&&s.kindFromSpatialRow===null)'));
+assert.ok(run('suspects.some(s=>s.exactText==="enhanced hours")'));
+assert.ok(run('suspects.some(s=>s.exactText==="OT"&&s.kindFromSpatialRow==="ot")'));
+assert.ok(run('suspects.every(s=>!["noise","Rate","Amount"].includes(s.exactText))'));
+assert.equal(run('suspects.find(s=>s.productionRowId===null).tokens[0].b.cx'),8);
+const suspectHtml=run('earningsStructureAuditHtml(suspectWords,"suspect fixture")');
+assert.ok(suspectHtml.indexOf('Earnings label suspects')<suspectHtml.indexOf('Diagnostic headings versus production gates'));
+assert.match(suspectHtml,/productionGrouping/);
+assert.equal(JSON.stringify(ctx.suspectWords),suspectBefore);
+const auditBefore=run('JSON.stringify(suspectAudit)');
+run('earningsLabelSuspectsHtml(suspectAudit,suspectWords)');
+assert.equal(run('JSON.stringify(suspectAudit)'),auditBefore,'suspect rendering cannot mutate the captured audit');
+run('splitSuspects=earningsLabelSuspects(earningsStructureAudit(jitterWords))');
+assert.ok(run('splitSuspects.some(s=>s.neighbouringReconstructions.some(j=>j.joined==="basic"&&j.productionRows.length===2))'),'neighbour fragments remain visible across the production 17px row split');
+ctx.excludedLabel=[token('Basic',0,100),token('taxable',50,100),token('pay',115,100)];
+assert.ok(run('earningsLabelSuspects(earningsStructureAudit(excludedLabel)).some(s=>s.rejectionReason.includes("Basic label exclusion matched"))'));
+// Same-height but distant fragments must not fabricate a diagnostic label.
+ctx.distantFragments=[token('Ba',0,100,16),token('sic',300,100,24)];
+assert.equal(run('earningsLabelSuspects(earningsStructureAudit(distantFragments)).some(s=>s.neighbouringReconstructions.length)'),false);
+run('suspectAudit.tokens[0].text="<img onerror=bad> Basic"');
+assert.match(run('earningsLabelSuspectsHtml(suspectAudit,suspectWords)'),/&lt;img/);
+assert.ok(!run('earningsLabelSuspectsHtml(suspectAudit,suspectWords)').includes('<img onerror'));
+// Report-shaped SYNTHETIC fixture: the counts/headings are reported facts, but
+// body text, confidence and geometry are not captured device evidence. Two
+// different upstream causes deliberately give the same 1411/178/0 summary.
+ctx.reportShape=[];
+for(let row=0;row<178;row++){
+ const texts=row===0?['HOURS','WORKED','SESSIONS','UNITS','PAID','RATE','AMOUNT','noise']:row===1?['Ba','sic','Pay','noise','noise','noise','noise','noise']:Array(row<165?8:7).fill('noise');
+ texts.forEach((text,col)=>ctx.reportShape.push(token(text,col*100,row*30)));
+}
+run('reportRows=spatialRows(reportShape)');
+assert.equal(ctx.reportShape.length,1411);
+assert.equal(run('reportRows.length'),178);
+assert.equal(run('reportRows.filter(r=>kindFromSpatialRow(r)).length'),0);
+assert.equal(run('fuzzyLabel(reportRows[1].text).startsWith("ba sic pay")'),true);
+assert.equal(run('adaptiveHeaderGeometry(reportShape).reason'),'No labelled earnings rows');
+assert.equal(run('earningsRegionAnchor(reportRows).reason'),'Printed earnings-region heading not proved');
+// Header recognition cannot satisfy the required body-description predicate.
+assert.equal(run('kindFromSpatialRow(reportRows[0])'),null);
+// A confidence-filtered whole Basic token yields the very same summary. These
+// counts cannot establish which upstream cause occurred on the actual phone.
+ctx.confidenceShape=ctx.reportShape.map(w=>({...w,bbox:{...w.bbox}}));
+ctx.confidenceShape[8].text='Basic';ctx.confidenceShape[8].conf=19;
+ctx.confidenceShape[9].text='noise';
+run('confidenceRows=spatialRows(confidenceShape)');
+assert.equal(ctx.confidenceShape.length,1411);
+assert.equal(run('confidenceRows.length'),178);
+assert.equal(run('confidenceRows.filter(r=>kindFromSpatialRow(r)).length'),0);
+assert.equal(run('adaptiveHeaderGeometry(confidenceShape).reason'),'No labelled earnings rows');
+assert.ok(!run('confidenceRows.some(r=>r.words.some(w=>w.text==="Basic"))'));
+console.log('PASS: header early exit, synthetic 1411/178/0 summaries with distinct upstream causes, fragmented/stacked reconstruction, per-heading confidence/17px/regex/region/520px gate ledger, column ambiguity, unchanged evidence/acceptance, escaped diagnostics and PAYE lineage.');
