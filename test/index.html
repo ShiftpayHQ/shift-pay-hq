@@ -103,7 +103,7 @@
 .inputlike{background:#fff;border:1px solid #d0d5dd;border-radius:7px;padding:7px;min-height:18px} </style>
 </head>
 <body>
-<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf11.13 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf10 · Geometry Recovery</p></header><main>
+<div id="buildBadge" style="position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;z-index:9999;background:#101828;color:white;padding:5px 9px;border-radius:999px;font:700 11px system-ui;box-shadow:0 2px 8px #0003">v9.10.3bf11.13 DEV</div><header><h1>Shift Pay HQ</h1><p>v9.10.3bf11.13 DEV · Same-Position Conflict Witness Audit · Device build 1</p></header><main>
 
 <section id="rota" class="section active">
 <div id="installCard" class="install"><strong>Install Shift Pay HQ on iPhone</strong><span class="muted">In Safari tap Share → Add to Home Screen → Add.</span></div>
@@ -908,7 +908,16 @@ function teachingConflictEvidence(field,model){
  const rawById=new Map(model.raw.map(t=>[t.id,t])),byId=new Map(model.candidates.map(c=>[c.id,c]));
  const rawToken=id=>{const t=rawById.get(id);return t?{id,text:t.w.text,b:t.b,confidence:t.w.conf??t.w.confidence??null,excluded:t.excluded||'',against:t.against||[],numeric:normalizeTeachingNumber(t.w.text)}:{id,missing:true}};
  const representation=c=>{const parsed=normalizeTeachingNumber(c.w.text);return {candidateId:c.id,source:c.source??null,sourceTokenIds:c.parts,text:c.w.text,normalized:c.normalized,value:c.v,valueType:typeof c.v,valueConsistentWithText:c.v===parsed.value,b:c.b,rowId:c.rowId,physicalId:c.physicalId??null,reason:c.reason||'',recovery:c.recovery||'',priorReason:c.priorReason||'',raw:c.parts.map(rawToken),textNormalization:parsed}};
- const group=p=>({groupId:p.id,source:p.source,value:p.v,valueType:typeof p.v,normalized:p.normalized,text:p.w.text,b:p.b,rowId:p.rowId,recovery:p.recovery||'',candidateIds:p.candidateIds,eligibleMemberIds:p.members.map(c=>c.id),sourceTokenIds:p.parts,raw:p.parts.map(rawToken),representations:p.candidateIds.map(id=>byId.has(id)?representation(byId.get(id)):{candidateId:id,missing:true})});
+ // Replay label association for every witness, for context only; labels never
+ // participate in the conflict predicate or change the captured decision.
+ const labelEvidence=p=>{
+  const row=model.rows.find(r=>r.id===p.rowId),h=p.b.y1-p.b.y0;
+  const left=(row?.tokens||[]).filter(t=>t.b.x1<=p.b.x0&&Math.abs(t.b.cy-p.b.cy)<=Math.min(h,row.h)*.55);
+  const barrier=Math.max(-Infinity,...left.filter(t=>normalizeTeachingNumber(t.w.text).value!==null).map(t=>t.b.x1));
+  const labels=left.filter(t=>t.b.x0>=barrier&&/[A-Za-z]/.test(t.w.text)&&!/[\d]/.test(t.w.text)&&!/^[£\dOoIl|SB.,·•٫\s;:]+$/.test(t.w.text)&&normalizeTeachingNumber(t.w.text).value===null).slice(-5);
+  return {label:labels.map(t=>t.w.text).join(' ').toLowerCase(),labelTokenIds:labels.map(t=>t.id),labelTokens:labels.map(t=>rawToken(t.id)),numericBarrierX:Number.isFinite(barrier)?barrier:null,labelRole:'Context only; not a conflict predicate condition'};
+ };
+ const group=p=>({groupId:p.id,source:p.source,value:p.v,valueType:typeof p.v,normalized:p.normalized,text:p.w.text,b:p.b,rowId:p.rowId,...labelEvidence(p),recovery:p.recovery||'',candidateIds:p.candidateIds,eligibleMemberIds:p.members.map(c=>c.id),sourceTokenIds:p.parts,raw:p.parts.map(rawToken),representations:p.candidateIds.map(id=>byId.has(id)?representation(byId.get(id)):{candidateId:id,missing:true})});
  const boundsEqual=(a,b)=>['x0','y0','x1','y1'].every(k=>a[k]===b[k]);
  const sameTokens=(a,b)=>a.length===b.length&&a.every(id=>b.includes(id));
  const exact=physical.filter(c=>c.v!==null&&Math.abs(c.v-field.target)<=1e-6);

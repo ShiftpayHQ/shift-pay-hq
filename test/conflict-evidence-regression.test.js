@@ -46,10 +46,19 @@ assert.equal(run('result.field.occurrences[0].problem'),'Conflicting numeric OCR
 assert.equal(run('result.audit.exactGroups[0].firstRejectingGroupId'),500);
 assert.equal(run('result.audit.exactGroups[0].witnesses[0].otherGroup.sourceTokenIds.join(",")'),'688');
 assert.equal(run('result.audit.exactGroups[0].witnesses[0].otherGroup.value'),1060.01);
+assert.equal(run('result.audit.exactGroups[0].witnesses[0].otherGroup.label'),'c m t a x');
+assert.equal(run('result.audit.exactGroups[0].witnesses[0].otherGroup.labelTokenIds.join(",")'),'0,1,2,3,4');
+assert.equal(run('result.audit.exactGroups[0].witnesses[0].otherGroup.labelTokens[0].b.x0'),3100);
+assert.equal(run('result.audit.exactGroups[0].targetGroup.label'),run('result.field.occurrences[0].label'));
 assert.equal(run('result.audit.exactGroups[0].witnesses[0].conditions.differentValue'),true);
 assert.equal(run('result.audit.exactGroups[0].witnesses[0].conditions.overlapPass'),true);
 assert.equal(run('result.audit.exactGroups[0].replayAgrees'),true);
 assert.match(run('result.audit.exactGroups[0].decisionChain'),/trustworthy filter excludes/);
+// Enumerate every rejecting group, not only the first witness used by some().
+run('model=fixtureModel([{id:500,tokenId:688,text:"1060.01",bbox:fixture.representations[0].bbox},{id:501,tokenId:689,text:"1060.02",bbox:fixture.representations[0].bbox}]);result=inspect(model)');
+assert.equal(run('result.audit.exactGroups[0].witnesses.map(w=>w.otherGroup.groupId).join(",")'),'500,501');
+assert.equal(run('result.audit.exactGroups[0].firstRejectingGroupId'),500);
+assert.ok(run('result.audit.exactGroups[0].witnesses.every(w=>w.otherGroup.label==="c m t a x"&&w.rejects&&w.overlapOfSmaller===1)'));
 // Actual builder reproduction: a contained numeric glyph can survive as a word.
 // This is a demonstrated mechanism, not the unidentified device counterpart.
 ctx.fragmentWords=[{text:'1060.07',bbox:{x0:3275,y0:541,x1:3514,y1:587},conf:95},{text:'1',bbox:{x0:3280,y0:550,x1:3288,y1:570},conf:95}];
